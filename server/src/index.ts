@@ -1,13 +1,14 @@
-// src/index.ts
-import express from 'express';
+import { createServer } from "node:http";
+import { createYoga } from "graphql-yoga";
+import { schema } from "./schema";
 
-const app = express();
-const port = 8000;
+// Create a Yoga instance with a GraphQL schema.
+const yoga = createYoga({ schema });
 
-app.get('/', (req, res) => {
-  res.send('Hello, TypeScript with Express!');
-});
+// Pass it into a server to hook into request handlers.
+const server = createServer(yoga);
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+// Start the server and you're done!
+server.listen(4000, () => {
+  console.info("Server is running on http://localhost:4000/graphql");
 });
