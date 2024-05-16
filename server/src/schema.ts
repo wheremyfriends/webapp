@@ -1,6 +1,17 @@
-import { createSchema } from "graphql-yoga";
+import { Repeater, createPubSub, createSchema } from "graphql-yoga";
 import * as db from "./db";
 import { GraphQLError } from "graphql";
+
+interface Lesson {
+  name: string;
+  moduleCode: string;
+  lessonType: string;
+  classNo: string;
+}
+
+const pubSub = createPubSub<{
+  "room:lesson": [roomID: string];
+}>();
 
 export const schema = createSchema({
   typeDefs: /* GraphQL */ `
@@ -9,7 +20,6 @@ export const schema = createSchema({
     }
 
     type Lesson {
-      roomID: String!
       name: String!
       moduleCode: String!
       lessonType: String!
@@ -45,7 +55,7 @@ export const schema = createSchema({
     }
 
     type Subscription {
-      lessonChange(roomNo: Int!): Boolean
+      lessonChange(roomID: String!): Lesson
       userChange(roomNo: Int!): Boolean
     }
   `,
@@ -94,12 +104,20 @@ export const schema = createSchema({
         if (user == undefined)
           return Promise.reject(new GraphQLError("User not found"));
 
-        db.createLesson(
+        await db.createLesson(
           user.id,
           args.moduleCode,
           args.lessonType,
           args.classNo,
-        ).catch(db.throwErr);
+        );
+
+        const l = {
+          name: user.name,
+          moduleCode: args.moduleCode,
+          lessonType: args.lessonType,
+          classNo: args.classNo,
+        };
+        pubSub.publish("room:lesson", args.roomID, l);
 
         return true;
       },
@@ -121,17 +139,40 @@ export const schema = createSchema({
         if (user == undefined)
           return Promise.reject(new GraphQLError("User not found"));
 
-        db.deleteLesson(
-          user.id,
-          args.moduleCode,
-          args.lessonType,
-          args.classNo,
-        ).catch(db.throwErr);
+        await db
+          .deleteLesson(user.id, args.moduleCode, args.lessonType, args.classNo)
+          .catch(db.throwErr);
 
         return true;
       },
     },
 
-    Subscription: {},
+    Subscription: {
+      lessonChange: {
+        subscribe: async (_, args: { roomID: string }) => {
+          console.log("New WS Connection");
+          console.log(args.roomID);
+
+          // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
+          return Repeater.merge([
+            new Repeater(async (push, stop) => {
+              const l = {
+                name: "Name",
+                moduleCode: "CS2040C",
+                lessonType: "Lecture",
+                classNo: "1A",
+              };
+              push(l);
+              await stop;
+            }),
+            pubSub.subscribe("room:lesson", args.roomID),
+          ]);
+        },
+        resolve: (payload) => {
+          console.log(`Payload: ${payload}`);
+          return payload;
+        },
+      },
+    },
   },
 });
