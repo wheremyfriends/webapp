@@ -2,14 +2,6 @@ import { createSchema } from "graphql-yoga";
 import * as db from "./db";
 import { GraphQLError } from "graphql";
 
-interface Lesson {
-  roomID: string;
-  name: string;
-  moduleCode: string;
-  lessonType: string;
-  classNo: string;
-}
-
 export const schema = createSchema({
   typeDefs: /* GraphQL */ `
     type Query {
