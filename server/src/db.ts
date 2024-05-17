@@ -83,18 +83,33 @@ export async function createLesson(
   });
 }
 
+export async function readLessonsByRoom(roomID: string) {
+  return prisma.lesson.findMany({
+    where: {
+      user: {
+        roomID,
+      },
+    },
+    include: {
+      user: true,
+    },
+  });
+}
+
 export async function deleteLesson(
   userID: number,
   moduleCode: string,
   lessonType: string,
   classNo: string,
 ) {
-  return prisma.lesson.deleteMany({
+  return prisma.lesson.delete({
     where: {
-      moduleCode,
-      lessonType,
-      classNo,
-      userID,
+      userID_moduleCode_lessonType_classNo: {
+        moduleCode,
+        lessonType,
+        classNo,
+        userID,
+      },
     },
   });
 }
