@@ -69,12 +69,14 @@ export async function deleteUser(roomID: string, name: string) {
 
 export async function createLesson(
   userID: number,
+  semester: number,
   moduleCode: string,
   lessonType: string,
   classNo: string,
 ) {
   return prisma.lesson.create({
     data: {
+      semester,
       moduleCode,
       lessonType,
       classNo,
@@ -106,13 +108,15 @@ export async function readLessonsByRoom(roomID: string) {
 
 export async function deleteLesson(
   userID: number,
+  semester: number,
   moduleCode: string,
   lessonType: string,
   classNo: string,
 ) {
   return prisma.lesson.delete({
     where: {
-      userID_moduleCode_lessonType_classNo: {
+      userID_semester_moduleCode_lessonType_classNo: {
+        semester,
         moduleCode,
         lessonType,
         classNo,
@@ -122,10 +126,15 @@ export async function deleteLesson(
   });
 }
 
-export async function deleteLessons(userID: number, moduleCode: string) {
+export async function deleteLessons(
+  userID: number,
+  semester: number,
+  moduleCode: string,
+) {
   const lessons = await prisma.lesson.findMany({
     where: {
       moduleCode,
+      semester,
       userID,
     },
   });
@@ -133,6 +142,7 @@ export async function deleteLessons(userID: number, moduleCode: string) {
   await prisma.lesson.deleteMany({
     where: {
       moduleCode,
+      semester,
       userID,
     },
   });

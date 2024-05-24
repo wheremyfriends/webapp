@@ -6,6 +6,7 @@ import { Lesson } from "@prisma/client";
 interface LessonEvent {
   action: Action;
   name: string;
+  semester: number;
   moduleCode: string;
   lessonType: string;
   classNo: string;
@@ -43,6 +44,7 @@ export const schema = createSchema({
     type LessonChangeEvent {
       action: Action!
       name: String!
+      semester: Int!
       moduleCode: String!
       lessonType: String!
       classNo: String!
@@ -64,6 +66,7 @@ export const schema = createSchema({
       createLesson(
         roomID: String!
         name: String!
+        semester: Int!
         moduleCode: String!
         lessonType: String!
         classNo: String!
@@ -72,6 +75,7 @@ export const schema = createSchema({
       deleteLesson(
         roomID: String!
         name: String!
+        semester: Int!
         moduleCode: String!
         lessonType: String!
         classNo: String!
@@ -80,6 +84,7 @@ export const schema = createSchema({
       deleteLessons(
         roomID: String!
         name: String!
+        semester: Int!
         moduleCode: String!
       ): Boolean
 
@@ -149,6 +154,7 @@ export const schema = createSchema({
         args: {
           roomID: string;
           name: string;
+          semester: number;
           moduleCode: string;
           lessonType: string;
           classNo: string;
@@ -162,12 +168,19 @@ export const schema = createSchema({
           return Promise.reject(new GraphQLError("User not found"));
 
         await db
-          .createLesson(user.id, args.moduleCode, args.lessonType, args.classNo)
+          .createLesson(
+            user.id,
+            args.semester,
+            args.moduleCode,
+            args.lessonType,
+            args.classNo,
+          )
           .catch(db.throwErr);
 
         const l = {
           action: Action.CREATE,
           name: user.name,
+          semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
           classNo: args.classNo,
@@ -182,6 +195,7 @@ export const schema = createSchema({
         args: {
           roomID: string;
           name: string;
+          semester: number;
           moduleCode: string;
           lessonType: string;
           classNo: string;
@@ -195,12 +209,19 @@ export const schema = createSchema({
           return Promise.reject(new GraphQLError("User not found"));
 
         await db
-          .deleteLesson(user.id, args.moduleCode, args.lessonType, args.classNo)
+          .deleteLesson(
+            user.id,
+            args.semester,
+            args.moduleCode,
+            args.lessonType,
+            args.classNo,
+          )
           .catch(db.throwErr);
 
         const l = {
           action: Action.DELETE,
           name: user.name,
+          semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
           classNo: args.classNo,
@@ -214,6 +235,7 @@ export const schema = createSchema({
         args: {
           roomID: string;
           name: string;
+          semester: number;
           moduleCode: string;
         },
       ) => {
@@ -225,13 +247,14 @@ export const schema = createSchema({
           return Promise.reject(new GraphQLError("User not found"));
 
         const deletedLessons = await db
-          .deleteLessons(user.id, args.moduleCode)
+          .deleteLessons(user.id, args.semester, args.moduleCode)
           .catch(db.throwErr);
 
         deletedLessons.forEach((lesson) => {
           const l = {
             action: Action.DELETE,
             name: user.name,
+            semester: args.semester,
             moduleCode: lesson.moduleCode,
             lessonType: lesson.lessonType,
             classNo: lesson.classNo,
