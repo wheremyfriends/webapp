@@ -19,9 +19,12 @@ interface UserChangeEvent {
 }
 
 enum Action {
-  CREATE = "CREATE",
-  UPDATE = "UPDATE",
-  DELETE = "DELETE",
+  CREATE_LESSON = "CREATE_LESSON",
+  DELETE_LESSON = "DELETE_LESSON",
+  DELETE_MODULE = "DELETE_MODULE",
+  CREATE_USER = "CREATE_USER",
+  UPDATE_USER = "UPDATE_USER",
+  DELETE_USER = "DELETE_USER",
 }
 
 const pubSub = createPubSub<{
@@ -36,9 +39,12 @@ export const schema = createSchema({
     }
 
     enum Action {
-      CREATE
-      UPDATE
-      DELETE
+      CREATE_LESSON
+      DELETE_LESSON
+      DELETE_MODULE
+      CREATE_USER
+      UPDATE_USER
+      DELETE_USER
     }
 
     type LessonChangeEvent {
@@ -107,7 +113,7 @@ export const schema = createSchema({
         await db.createUser(args.roomID, args.name).catch(db.throwErr);
 
         const u = {
-          action: Action.CREATE,
+          action: Action.CREATE_USER,
           name: args.name,
         };
         pubSub.publish("room:user", args.roomID, u);
@@ -124,7 +130,7 @@ export const schema = createSchema({
           .catch(db.throwErr);
 
         const u = {
-          action: Action.UPDATE,
+          action: Action.UPDATE_USER,
           oldname: args.oldname,
           name: args.newname,
         };
@@ -141,7 +147,7 @@ export const schema = createSchema({
         await db.deleteUser(args.roomID, args.name).catch(db.throwErr);
 
         const u = {
-          action: Action.DELETE,
+          action: Action.DELETE_USER,
           name: args.name,
         };
 
@@ -178,7 +184,7 @@ export const schema = createSchema({
           .catch(db.throwErr);
 
         const l = {
-          action: Action.CREATE,
+          action: Action.CREATE_LESSON,
           name: user.name,
           semester: args.semester,
           moduleCode: args.moduleCode,
@@ -219,7 +225,7 @@ export const schema = createSchema({
           .catch(db.throwErr);
 
         const l = {
-          action: Action.DELETE,
+          action: Action.DELETE_LESSON,
           name: user.name,
           semester: args.semester,
           moduleCode: args.moduleCode,
@@ -250,17 +256,16 @@ export const schema = createSchema({
           .deleteLessons(user.id, args.semester, args.moduleCode)
           .catch(db.throwErr);
 
-        deletedLessons.forEach((lesson) => {
-          const l = {
-            action: Action.DELETE,
-            name: user.name,
-            semester: args.semester,
-            moduleCode: lesson.moduleCode,
-            lessonType: lesson.lessonType,
-            classNo: lesson.classNo,
-          };
-          pubSub.publish("room:lesson", args.roomID, l);
-        });
+        const l = {
+          action: Action.DELETE_MODULE,
+          name: user.name,
+          semester: args.semester,
+          moduleCode: args.moduleCode,
+          lessonType: "",
+          classNo: "",
+        };
+        pubSub.publish("room:lesson", args.roomID, l);
+
         return true;
       },
     },
@@ -281,7 +286,7 @@ export const schema = createSchema({
 
               lessons.forEach((l: any) => {
                 push({
-                  action: Action.CREATE,
+                  action: Action.CREATE_LESSON,
                   name: l.user.name,
                   semester: l.semester,
                   moduleCode: l.moduleCode,
@@ -314,7 +319,7 @@ export const schema = createSchema({
 
               users.forEach((u: any) => {
                 push({
-                  action: Action.CREATE,
+                  action: Action.CREATE_USER,
                   name: u.name,
                 });
               });
