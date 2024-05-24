@@ -13,6 +13,7 @@ interface LessonEvent {
 
 interface UserChangeEvent {
   action: Action;
+  oldname?: string;
   name: string;
 }
 
@@ -49,6 +50,7 @@ export const schema = createSchema({
 
     type UserChangeEvent {
       action: Action!
+      oldname: String
       name: String!
     }
 
@@ -98,6 +100,13 @@ export const schema = createSchema({
         args: { roomID: string; name: string },
       ) => {
         await db.createUser(args.roomID, args.name).catch(db.throwErr);
+
+        const u = {
+          action: Action.CREATE,
+          name: args.name,
+        };
+        pubSub.publish("room:user", args.roomID, u);
+
         return true;
       },
 
@@ -108,6 +117,15 @@ export const schema = createSchema({
         await db
           .updateUser(args.roomID, args.oldname, args.newname)
           .catch(db.throwErr);
+
+        const u = {
+          action: Action.UPDATE,
+          oldname: args.oldname,
+          name: args.newname,
+        };
+
+        pubSub.publish("room:user", args.roomID, u);
+
         return true;
       },
 
@@ -116,6 +134,13 @@ export const schema = createSchema({
         args: { roomID: string; name: string },
       ) => {
         await db.deleteUser(args.roomID, args.name).catch(db.throwErr);
+
+        const u = {
+          action: Action.DELETE,
+          name: args.name,
+        };
+
+        pubSub.publish("room:user", args.roomID, u);
         return true;
       },
 
