@@ -90,7 +90,7 @@ export const schema = createSchema({
 
     type Subscription {
       lessonChange(roomID: String!): LessonChangeEvent
-      userChange(roomID: String!): Boolean
+      userChange(roomID: String!): UserChangeEvent
     }
   `,
   resolvers: {
@@ -291,7 +291,7 @@ export const schema = createSchema({
               users.forEach((u: any) => {
                 push({
                   action: Action.CREATE,
-                  name: u.user.name,
+                  name: u.name,
                 });
               });
               await stop;
