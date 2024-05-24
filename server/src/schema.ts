@@ -87,7 +87,7 @@ export const schema = createSchema({
         classNo: String!
       ): Boolean
 
-      deleteLessons(
+      deleteModule(
         roomID: String!
         name: String!
         semester: Int!
@@ -236,7 +236,7 @@ export const schema = createSchema({
         return true;
       },
 
-      deleteLessons: async (
+      deleteModule: async (
         parent: unknown,
         args: {
           roomID: string;
@@ -253,7 +253,7 @@ export const schema = createSchema({
           return Promise.reject(new GraphQLError("User not found"));
 
         const deletedLessons = await db
-          .deleteLessons(user.id, args.semester, args.moduleCode)
+          .deleteModule(user.id, args.semester, args.moduleCode)
           .catch(db.throwErr);
 
         const l = {

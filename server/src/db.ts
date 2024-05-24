@@ -126,7 +126,7 @@ export async function deleteLesson(
   });
 }
 
-export async function deleteLessons(
+export async function deleteModule(
   userID: number,
   semester: number,
   moduleCode: string,
