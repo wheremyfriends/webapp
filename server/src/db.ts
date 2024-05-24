@@ -83,6 +83,14 @@ export async function createLesson(
   });
 }
 
+export async function readUsersByRoom(roomID: string) {
+  return prisma.user.findMany({
+    where: {
+      roomID,
+    },
+  });
+}
+
 export async function readLessonsByRoom(roomID: string) {
   return prisma.lesson.findMany({
     where: {

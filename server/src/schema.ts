@@ -11,6 +11,11 @@ interface LessonEvent {
   classNo: string;
 }
 
+interface UserChangeEvent {
+  action: Action;
+  name: string;
+}
+
 enum Action {
   CREATE = "CREATE",
   UPDATE = "UPDATE",
@@ -19,6 +24,7 @@ enum Action {
 
 const pubSub = createPubSub<{
   "room:lesson": [roomID: string, payload: LessonEvent];
+  "room:user": [roomID: string, payload: UserChangeEvent];
 }>();
 
 export const schema = createSchema({
@@ -39,6 +45,11 @@ export const schema = createSchema({
       moduleCode: String!
       lessonType: String!
       classNo: String!
+    }
+
+    type UserChangeEvent {
+      action: Action!
+      name: String!
     }
 
     type User {
@@ -77,7 +88,7 @@ export const schema = createSchema({
 
     type Subscription {
       lessonChange(roomID: String!): LessonChangeEvent
-      userChange(roomNo: Int!): Boolean
+      userChange(roomID: String!): Boolean
     }
   `,
   resolvers: {
@@ -235,7 +246,35 @@ export const schema = createSchema({
           ]);
         },
         resolve: (payload) => {
-          console.log(`Payload: ${payload}`);
+          return payload;
+        },
+      },
+
+      userChange: {
+        subscribe: async (_, args: { roomID: string }) => {
+          console.log("New User WS Connection");
+          console.log(args.roomID);
+
+          // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
+          return Repeater.merge([
+            new Repeater(async (push, stop) => {
+              // Get initial values
+              const users = await db
+                .readUsersByRoom(args.roomID)
+                .catch(db.throwErr);
+
+              users.forEach((u: any) => {
+                push({
+                  action: Action.CREATE,
+                  name: u.user.name,
+                });
+              });
+              await stop;
+            }),
+            pubSub.subscribe("room:user", args.roomID),
+          ]);
+        },
+        resolve: (payload) => {
           return payload;
         },
       },
