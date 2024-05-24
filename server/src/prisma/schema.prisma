@@ -28,7 +28,7 @@ model Lesson {
   moduleCode    String
   lessonType String
   classNo    String
-  user       User   @relation(fields: [userID], references: [id])
+  user       User   @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userID     Int
 
   @@unique([userID, moduleCode, lessonType, classNo])
