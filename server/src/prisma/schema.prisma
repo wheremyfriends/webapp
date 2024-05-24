@@ -32,5 +32,5 @@ model Lesson {
   user       User   @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
   userID     Int
 
-  @@unique([userID, moduleCode, lessonType, classNo])
+  @@unique([userID, semester, moduleCode, lessonType, classNo])
 }
