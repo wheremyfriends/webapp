@@ -113,3 +113,21 @@ export async function deleteLesson(
     },
   });
 }
+
+export async function deleteLessons(userID: number, moduleCode: string) {
+  const lessons = await prisma.lesson.findMany({
+    where: {
+      moduleCode,
+      userID,
+    },
+  });
+
+  await prisma.lesson.deleteMany({
+    where: {
+      moduleCode,
+      userID,
+    },
+  });
+
+  return lessons;
+}

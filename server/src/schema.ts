@@ -64,6 +64,12 @@ export const schema = createSchema({
         classNo: String!
       ): Boolean
 
+      deleteLessons(
+        roomID: String!
+        name: String!
+        moduleCode: String!
+      ): Boolean
+
       createUser(roomID: String!, name: String!): Boolean
       updateUser(roomID: String!, oldname: String!, newname: String!): Boolean
       deleteUser(roomID: String!, name: String!): Boolean
@@ -164,6 +170,38 @@ export const schema = createSchema({
           classNo: args.classNo,
         };
         pubSub.publish("room:lesson", args.roomID, l);
+        return true;
+      },
+
+      deleteLessons: async (
+        parent: unknown,
+        args: {
+          roomID: string;
+          name: string;
+          moduleCode: string;
+        },
+      ) => {
+        const user = await db
+          .readUser(args.roomID, args.name)
+          .catch(db.throwErr);
+
+        if (user == undefined)
+          return Promise.reject(new GraphQLError("User not found"));
+
+        const deletedLessons = await db
+          .deleteLessons(user.id, args.moduleCode)
+          .catch(db.throwErr);
+
+        deletedLessons.forEach((lesson) => {
+          const l = {
+            action: Action.DELETE,
+            name: user.name,
+            moduleCode: lesson.moduleCode,
+            lessonType: lesson.lessonType,
+            classNo: lesson.classNo,
+          };
+          pubSub.publish("room:lesson", args.roomID, l);
+        });
         return true;
       },
     },
