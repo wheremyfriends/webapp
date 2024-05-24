@@ -283,6 +283,7 @@ export const schema = createSchema({
                 push({
                   action: Action.CREATE,
                   name: l.user.name,
+                  semester: l.semester,
                   moduleCode: l.moduleCode,
                   lessonType: l.lessonType,
                   classNo: l.classNo,
