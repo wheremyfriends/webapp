@@ -126,25 +126,26 @@ export async function deleteLesson(
   });
 }
 
-export async function deleteModule(
+export async function deleteFromLesson(
   userID: number,
   semester: number,
-  moduleCode: string,
+  moduleCode?: string,
 ) {
+  const condition: { [key: string]: number | string } = {
+    userID,
+    semester,
+  };
+
+  if (moduleCode != undefined) {
+    condition[moduleCode] = moduleCode;
+  }
+
   const lessons = await prisma.lesson.findMany({
-    where: {
-      moduleCode,
-      semester,
-      userID,
-    },
+    where: condition,
   });
 
   await prisma.lesson.deleteMany({
-    where: {
-      moduleCode,
-      semester,
-      userID,
-    },
+    where: condition,
   });
 
   return lessons;

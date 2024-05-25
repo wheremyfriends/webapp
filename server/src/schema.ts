@@ -25,6 +25,7 @@ enum Action {
   CREATE_USER = "CREATE_USER",
   UPDATE_USER = "UPDATE_USER",
   DELETE_USER = "DELETE_USER",
+  RESET_TIMETABLE = "RESET_TIMETABLE",
 }
 
 const pubSub = createPubSub<{
@@ -45,6 +46,7 @@ export const schema = createSchema({
       CREATE_USER
       UPDATE_USER
       DELETE_USER
+      RESET_TIMETABLE
     }
 
     type LessonChangeEvent {
@@ -93,6 +95,8 @@ export const schema = createSchema({
         semester: Int!
         moduleCode: String!
       ): Boolean
+
+      resetTimetable(roomID: String!, name: String!, semester: Int!): Boolean
 
       createUser(roomID: String!, name: String!): Boolean
       updateUser(roomID: String!, oldname: String!, newname: String!): Boolean
@@ -252,8 +256,8 @@ export const schema = createSchema({
         if (user == undefined)
           return Promise.reject(new GraphQLError("User not found"));
 
-        const deletedLessons = await db
-          .deleteModule(user.id, args.semester, args.moduleCode)
+        await db
+          .deleteFromLesson(user.id, args.semester, args.moduleCode)
           .catch(db.throwErr);
 
         const l = {
@@ -261,6 +265,36 @@ export const schema = createSchema({
           name: user.name,
           semester: args.semester,
           moduleCode: args.moduleCode,
+          lessonType: "",
+          classNo: "",
+        };
+        pubSub.publish("room:lesson", args.roomID, l);
+
+        return true;
+      },
+
+      resetTimetable: async (
+        parent: unknown,
+        args: {
+          roomID: string;
+          name: string;
+          semester: number;
+        },
+      ) => {
+        const user = await db
+          .readUser(args.roomID, args.name)
+          .catch(db.throwErr);
+
+        if (user == undefined)
+          return Promise.reject(new GraphQLError("User not found"));
+
+        await db.deleteFromLesson(user.id, args.semester).catch(db.throwErr);
+
+        const l = {
+          action: Action.RESET_TIMETABLE,
+          name: user.name,
+          semester: args.semester,
+          moduleCode: "",
           lessonType: "",
           classNo: "",
         };
