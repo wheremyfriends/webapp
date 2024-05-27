@@ -21,6 +21,6 @@
         "start": "ts-node-dev --respawn --transpile-only src/index.ts"
     },
     "prisma": {
-        "schema": "src/prisma/schema.prisma"
+        "schema": "prisma/schema.prisma"
     }
 }
