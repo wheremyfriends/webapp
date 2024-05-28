@@ -1,0 +1,15 @@
+services:
+  server:
+    build:
+      context: server
+    environment:
+      - DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@db:$POSTGRES_PORT/$POSTGRES_DB
+    ports:
+      - 4000:4000
+  db:
+    image: "postgres:16.3-alpine3.20"
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_PORT
