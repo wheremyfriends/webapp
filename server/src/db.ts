@@ -137,7 +137,7 @@ export async function deleteFromLesson(
   };
 
   if (moduleCode != undefined) {
-    condition[moduleCode] = moduleCode;
+    condition["moduleCode"] = moduleCode;
   }
 
   const lessons = await prisma.lesson.findMany({
