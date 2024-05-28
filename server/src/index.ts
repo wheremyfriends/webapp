@@ -12,6 +12,7 @@ import { Socket } from "node:net";
 //
 export function buildApp() {
   const yoga = createYoga({
+    landingPage: false,
     graphiql: {
       subscriptionsProtocol: "WS",
     },
