@@ -9,12 +9,7 @@ pnpm install
 
 Create the database (dev)
 ```
-pnpm prisma migrate dev
-```
-
-Create the database (prod)
-```
-pnpm prisma migrate deploy
+pnpm migrate
 ```
 
 Start the GraphQL server
