@@ -2,9 +2,9 @@
 
 ## Prerequisite
 
-- Functional PostgresQL Server
+- Functional PostgreSQL Server
     - If using docker,
-        `docker compose up -d` to start a PostgresQL instance
+        `docker compose up -d` to start a PostgreSQL instance
 
 ## Getting Started
 
