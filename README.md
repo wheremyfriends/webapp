@@ -1,5 +1,11 @@
 # Server
 
+## Prerequisite
+
+- Functional PostgresQL Server
+    - If using docker,
+        `docker compose up -d` to start a PostgresQL instance
+
 ## Getting Started
 
 Ensure that dependencies are installed
