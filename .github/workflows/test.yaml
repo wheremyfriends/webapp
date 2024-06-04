@@ -29,9 +29,3 @@ jobs:
 
     - name: Run tests
       run: pnpm test
-
-    - name: Report coverage
-      uses: ArtiomTr/jest-coverage-report-action@v2
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        package-manager: pnpm
