@@ -1,7 +1,8 @@
 import { Repeater, createPubSub, createSchema } from "graphql-yoga";
 import * as db from "./db";
+import * as userGen from "./userGen";
 import { GraphQLError } from "graphql";
-import { Lesson } from "@prisma/client";
+import { User } from "@prisma/client";
 
 interface LessonEvent {
   action: Action;
@@ -14,7 +15,7 @@ interface LessonEvent {
 
 interface UserChangeEvent {
   action: Action;
-  oldname?: string;
+  userID: number;
   name: string;
 }
 
@@ -60,13 +61,13 @@ export const schema = createSchema({
 
     type UserChangeEvent {
       action: Action!
-      oldname: String
+      userID: Int!
       name: String!
     }
 
     type User {
-      id: Int!
       roomID: String!
+      userID: Int!
       name: String!
     }
 
@@ -98,9 +99,9 @@ export const schema = createSchema({
 
       resetTimetable(roomID: String!, name: String!, semester: Int!): Boolean
 
-      createUser(roomID: String!, name: String!): Boolean
-      updateUser(roomID: String!, oldname: String!, newname: String!): Boolean
-      deleteUser(roomID: String!, name: String!): Boolean
+      createUser(roomID: String!): Boolean
+      updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
+      deleteUser(roomID: String!, userID: Int!): Boolean
     }
 
     type Subscription {
@@ -110,32 +111,34 @@ export const schema = createSchema({
   `,
   resolvers: {
     Mutation: {
-      createUser: async (
-        parent: unknown,
-        args: { roomID: string; name: string },
-      ) => {
-        await db.createUser(args.roomID, args.name).catch(db.throwErr);
+      createUser: async (_: unknown, args: { roomID: string }) => {
+        const name = await userGen.getUsername(args.roomID);
+        console.log(`Create User: ${name}`);
+
+        const user = await db.createUser(args.roomID, name).catch(db.throwErr);
 
         const u = {
           action: Action.CREATE_USER,
-          name: args.name,
+          userID: user.id,
+          name: name,
         };
         pubSub.publish("room:user", args.roomID, u);
+        console.log(u);
 
         return true;
       },
 
       updateUser: async (
-        parent: unknown,
-        args: { roomID: string; oldname: string; newname: string },
+        _: unknown,
+        args: { roomID: string; userID: number; newname: string },
       ) => {
         await db
-          .updateUser(args.roomID, args.oldname, args.newname)
+          .updateUser(args.roomID, args.userID, args.newname)
           .catch(db.throwErr);
 
         const u = {
           action: Action.UPDATE_USER,
-          oldname: args.oldname,
+          userID: args.userID,
           name: args.newname,
         };
 
@@ -145,14 +148,17 @@ export const schema = createSchema({
       },
 
       deleteUser: async (
-        parent: unknown,
-        args: { roomID: string; name: string },
+        _: unknown,
+        args: { roomID: string; userID: number },
       ) => {
-        await db.deleteUser(args.roomID, args.name).catch(db.throwErr);
+        const deletedUser = await db
+          .deleteUser(args.roomID, args.userID)
+          .catch(db.throwErr);
 
         const u = {
           action: Action.DELETE_USER,
-          name: args.name,
+          userID: args.userID,
+          name: deletedUser.name,
         };
 
         pubSub.publish("room:user", args.roomID, u);
@@ -160,7 +166,7 @@ export const schema = createSchema({
       },
 
       createLesson: async (
-        parent: unknown,
+        _: unknown,
         args: {
           roomID: string;
           name: string;
@@ -201,7 +207,7 @@ export const schema = createSchema({
       },
 
       deleteLesson: async (
-        parent: unknown,
+        _: unknown,
         args: {
           roomID: string;
           name: string;
@@ -241,7 +247,7 @@ export const schema = createSchema({
       },
 
       deleteModule: async (
-        parent: unknown,
+        _: unknown,
         args: {
           roomID: string;
           name: string;
@@ -274,7 +280,7 @@ export const schema = createSchema({
       },
 
       resetTimetable: async (
-        parent: unknown,
+        _: unknown,
         args: {
           roomID: string;
           name: string;
@@ -340,8 +346,14 @@ export const schema = createSchema({
 
       userChange: {
         subscribe: async (_, args: { roomID: string }) => {
-          console.log("New User WS Connection");
-          console.log(args.roomID);
+          console.log(`New userChange Subscription: ${args.roomID}`);
+
+          // Create user if doesn't exist yet
+          if (!(await db.roomExists(args.roomID))) {
+            const name = await userGen.getUsername(args.roomID);
+            console.log(`Room doesn't exist. Creating user "${name}"`);
+            await db.createUser(args.roomID, name).catch(db.throwErr);
+          }
 
           // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
           return Repeater.merge([
@@ -351,9 +363,10 @@ export const schema = createSchema({
                 .readUsersByRoom(args.roomID)
                 .catch(db.throwErr);
 
-              users.forEach((u: any) => {
+              users.forEach((u: User) => {
                 push({
                   action: Action.CREATE_USER,
+                  userID: u.id,
                   name: u.name,
                 });
               });

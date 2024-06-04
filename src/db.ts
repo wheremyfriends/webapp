@@ -3,7 +3,7 @@ import { GraphQLError } from "graphql";
 
 const prisma = new PrismaClient();
 
-enum DB_ERR {
+export enum DB_ERR {
   UNIQUE_CONSTRAINT_FAILED = "P2002",
   RECORD_NOT_FOUND = "P2025",
 }
@@ -18,6 +18,15 @@ export function throwErr(e: Prisma.PrismaClientKnownRequestError) {
   return Promise.reject(e);
 }
 
+export async function roomExists(roomID: string): Promise<boolean> {
+  const users = await prisma.user.findMany({
+    where: {
+      roomID,
+    },
+  });
+
+  return users.length > 0;
+}
 export async function createUser(roomID: string, name: string) {
   return prisma.user.create({
     data: {
@@ -40,15 +49,12 @@ export async function readUser(roomID: string, name: string) {
 
 export async function updateUser(
   roomID: string,
-  oldname: string,
+  userID: number,
   newname: string,
 ) {
   return prisma.user.update({
     where: {
-      roomID_name: {
-        roomID,
-        name: oldname,
-      },
+      id: userID,
     },
     data: {
       name: newname,
@@ -56,13 +62,10 @@ export async function updateUser(
   });
 }
 
-export async function deleteUser(roomID: string, name: string) {
+export async function deleteUser(roomID: string, userID: number) {
   return prisma.user.delete({
     where: {
-      roomID_name: {
-        roomID,
-        name: name,
-      },
+      id: userID,
     },
   });
 }
