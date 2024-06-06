@@ -6,7 +6,7 @@ import { User } from "@prisma/client";
 
 interface LessonEvent {
   action: Action;
-  name: string;
+  userID: number;
   semester: number;
   moduleCode: string;
   lessonType: string;
@@ -52,7 +52,7 @@ export const schema = createSchema({
 
     type LessonChangeEvent {
       action: Action!
-      name: String!
+      userID: Int!
       semester: Int!
       moduleCode: String!
       lessonType: String!
@@ -74,7 +74,7 @@ export const schema = createSchema({
     type Mutation {
       createLesson(
         roomID: String!
-        name: String!
+        userID: Int!
         semester: Int!
         moduleCode: String!
         lessonType: String!
@@ -83,7 +83,7 @@ export const schema = createSchema({
 
       deleteLesson(
         roomID: String!
-        name: String!
+        userID: Int!
         semester: Int!
         moduleCode: String!
         lessonType: String!
@@ -92,12 +92,12 @@ export const schema = createSchema({
 
       deleteModule(
         roomID: String!
-        name: String!
+        userID: Int!
         semester: Int!
         moduleCode: String!
       ): Boolean
 
-      resetTimetable(roomID: String!, name: String!, semester: Int!): Boolean
+      resetTimetable(roomID: String!, userID: Int!, semester: Int!): Boolean
 
       createUser(roomID: String!): Boolean
       updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
@@ -169,7 +169,7 @@ export const schema = createSchema({
         _: unknown,
         args: {
           roomID: string;
-          name: string;
+          userID: number;
           semester: number;
           moduleCode: string;
           lessonType: string;
@@ -177,7 +177,7 @@ export const schema = createSchema({
         },
       ) => {
         const user = await db
-          .readUser(args.roomID, args.name)
+          .readUser(args.roomID, args.userID)
           .catch(db.throwErr);
 
         if (user == undefined)
@@ -195,7 +195,7 @@ export const schema = createSchema({
 
         const l = {
           action: Action.CREATE_LESSON,
-          name: user.name,
+          userID: user.id,
           semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
@@ -210,7 +210,7 @@ export const schema = createSchema({
         _: unknown,
         args: {
           roomID: string;
-          name: string;
+          userID: number;
           semester: number;
           moduleCode: string;
           lessonType: string;
@@ -218,7 +218,7 @@ export const schema = createSchema({
         },
       ) => {
         const user = await db
-          .readUser(args.roomID, args.name)
+          .readUser(args.roomID, args.userID)
           .catch(db.throwErr);
 
         if (user == undefined)
@@ -236,7 +236,7 @@ export const schema = createSchema({
 
         const l = {
           action: Action.DELETE_LESSON,
-          name: user.name,
+          userID: user.id,
           semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
@@ -250,13 +250,13 @@ export const schema = createSchema({
         _: unknown,
         args: {
           roomID: string;
-          name: string;
+          userID: number;
           semester: number;
           moduleCode: string;
         },
       ) => {
         const user = await db
-          .readUser(args.roomID, args.name)
+          .readUser(args.roomID, args.userID)
           .catch(db.throwErr);
 
         if (user == undefined)
@@ -268,7 +268,7 @@ export const schema = createSchema({
 
         const l = {
           action: Action.DELETE_MODULE,
-          name: user.name,
+          userID: user.id,
           semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: "",
@@ -283,12 +283,12 @@ export const schema = createSchema({
         _: unknown,
         args: {
           roomID: string;
-          name: string;
+          userID: number;
           semester: number;
         },
       ) => {
         const user = await db
-          .readUser(args.roomID, args.name)
+          .readUser(args.roomID, args.userID)
           .catch(db.throwErr);
 
         if (user == undefined)
@@ -298,7 +298,7 @@ export const schema = createSchema({
 
         const l = {
           action: Action.RESET_TIMETABLE,
-          name: user.name,
+          userID: user.id,
           semester: args.semester,
           moduleCode: "",
           lessonType: "",
@@ -327,7 +327,7 @@ export const schema = createSchema({
               lessons.forEach((l: any) => {
                 push({
                   action: Action.CREATE_LESSON,
-                  name: l.user.name,
+                  userID: l.user.id,
                   semester: l.semester,
                   moduleCode: l.moduleCode,
                   lessonType: l.lessonType,

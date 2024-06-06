@@ -36,13 +36,11 @@ export async function createUser(roomID: string, name: string) {
   });
 }
 
-export async function readUser(roomID: string, name: string) {
+export async function readUser(roomID: string, userID: number) {
   return prisma.user.findUnique({
     where: {
-      roomID_name: {
-        roomID,
-        name: name,
-      },
+      id: userID,
+      roomID,
     },
   });
 }
@@ -54,6 +52,7 @@ export async function updateUser(
 ) {
   return prisma.user.update({
     where: {
+      roomID: roomID,
       id: userID,
     },
     data: {
