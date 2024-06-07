@@ -12,7 +12,7 @@ RUN pnpm install
 COPY tsconfig.json .
 COPY prisma ./prisma
 COPY src ./src
-RUN pnpm prisma generate && pnpm run build
+RUN pnpx prisma generate && pnpm run build
 
 FROM pnpm
 
@@ -24,7 +24,7 @@ RUN chmod a+x /usr/local/bin/docker-entrypoint.sh \
     && pnpm install --prod --frozen-lockfile
 
 COPY prisma ./prisma
-RUN pnpm prisma generate
+RUN pnpx prisma generate
 
 COPY --from=deps /app/dist .
 
