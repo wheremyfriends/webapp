@@ -21,6 +21,7 @@ model User {
   Lesson Lesson[]
 
   @@unique([roomID, name])
+  @@map("user")
 }
 
 model Lesson {
@@ -33,4 +34,5 @@ model Lesson {
   userID     Int
 
   @@unique([userID, semester, moduleCode, lessonType, classNo])
+  @@map("lesson")
 }
