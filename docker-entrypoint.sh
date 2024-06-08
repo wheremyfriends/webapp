@@ -1,6 +1,6 @@
 #!/bin/sh
 
-until pnpm prisma migrate deploy
+until pnpx prisma migrate deploy
 do
     echo "Command failed. Retrying..."
     sleep 5 # Wait for 5 seconds before retrying
