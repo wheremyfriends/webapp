@@ -3,16 +3,19 @@
 ## Getting Started
 
 Ensure that dependencies are installed
+
 ```
 pnpm install
 ```
 
 Create the database (dev)
+
 ```
 pnpm migrate
 ```
 
 Start the GraphQL server
+
 ```
 pnpm start
 ```
