@@ -4,6 +4,8 @@ import * as userGen from "./userGen";
 import { GraphQLError } from "graphql";
 import { User } from "@prisma/client";
 
+import { Roarr as log } from "roarr";
+
 interface LessonEvent {
   action: Action;
   userID: number;
@@ -112,18 +114,17 @@ export const schema = createSchema({
   resolvers: {
     Mutation: {
       createUser: async (_: unknown, args: { roomID: string }) => {
-        const name = await userGen.getUsername(args.roomID);
-        console.log(`Create User: ${name}`);
+        const user = await userGen.getUsername(args.roomID);
 
-        const user = await db.createUser(args.roomID, name).catch(db.throwErr);
+        if (user == undefined) return new GraphQLError("Failed to create user");
 
         const u = {
           action: Action.CREATE_USER,
           userID: user.id,
-          name: name,
+          name: user.name,
         };
         pubSub.publish("room:user", args.roomID, u);
-        console.log(u);
+        log(u, "createUser");
 
         return true;
       },
@@ -143,6 +144,7 @@ export const schema = createSchema({
         };
 
         pubSub.publish("room:user", args.roomID, u);
+        log(u, "updateUser");
 
         return true;
       },
@@ -160,8 +162,9 @@ export const schema = createSchema({
           userID: args.userID,
           name: deletedUser.name,
         };
-
         pubSub.publish("room:user", args.roomID, u);
+        log(u, "deleteUser");
+
         return true;
       },
 
@@ -202,6 +205,7 @@ export const schema = createSchema({
           classNo: args.classNo,
         };
         pubSub.publish("room:lesson", args.roomID, l);
+        log(l, "createLesson");
 
         return true;
       },
@@ -243,6 +247,8 @@ export const schema = createSchema({
           classNo: args.classNo,
         };
         pubSub.publish("room:lesson", args.roomID, l);
+        log(l, "deleteLesson");
+
         return true;
       },
 
@@ -275,6 +281,7 @@ export const schema = createSchema({
           classNo: "",
         };
         pubSub.publish("room:lesson", args.roomID, l);
+        log(l, "deleteModule");
 
         return true;
       },
@@ -305,6 +312,7 @@ export const schema = createSchema({
           classNo: "",
         };
         pubSub.publish("room:lesson", args.roomID, l);
+        log(l, "resetTimetable");
 
         return true;
       },
@@ -313,8 +321,7 @@ export const schema = createSchema({
     Subscription: {
       lessonChange: {
         subscribe: async (_, args: { roomID: string }) => {
-          console.log("New WS Connection");
-          console.log(args.roomID);
+          log({ roomID: args.roomID }, "lessonChange subscription");
 
           // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
           return Repeater.merge([
@@ -339,21 +346,16 @@ export const schema = createSchema({
             pubSub.subscribe("room:lesson", args.roomID),
           ]);
         },
-        resolve: (payload) => {
-          return payload;
-        },
+        resolve: (payload) => payload,
       },
 
       userChange: {
         subscribe: async (_, args: { roomID: string }) => {
-          console.log(`New userChange Subscription: ${args.roomID}`);
+          log({ roomID: args.roomID }, "userChange subscription");
 
           // Create user if doesn't exist yet
-          if (!(await db.roomExists(args.roomID))) {
-            const name = await userGen.getUsername(args.roomID);
-            console.log(`Room doesn't exist. Creating user "${name}"`);
-            await db.createUser(args.roomID, name).catch(db.throwErr);
-          }
+          if (!(await db.roomExists(args.roomID)))
+            await userGen.getUsername(args.roomID);
 
           // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
           return Repeater.merge([
@@ -375,9 +377,7 @@ export const schema = createSchema({
             pubSub.subscribe("room:user", args.roomID),
           ]);
         },
-        resolve: (payload) => {
-          return payload;
-        },
+        resolve: (payload) => payload,
       },
     },
   },
