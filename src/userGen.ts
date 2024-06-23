@@ -1,5 +1,6 @@
 import { User } from "@prisma/client";
 import * as db from "./db";
+import { Roarr as log } from "roarr";
 
 const ADJECTIVES = [
   "Agile",
@@ -72,8 +73,7 @@ export async function getUsername(roomID: string): Promise<User | undefined> {
     const right = getRandEle<string>(NOUNS);
 
     randName = `${left} ${right}`;
-
-    console.log({ randName });
+    log({ randName }, "Generated name");
 
     try {
       const user = await db.createUser(roomID, randName);
