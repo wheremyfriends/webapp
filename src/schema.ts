@@ -112,18 +112,16 @@ export const schema = createSchema({
   resolvers: {
     Mutation: {
       createUser: async (_: unknown, args: { roomID: string }) => {
-        const name = await userGen.getUsername(args.roomID);
-        console.log(`Create User: ${name}`);
+        const user = await userGen.getUsername(args.roomID);
 
-        const user = await db.createUser(args.roomID, name).catch(db.throwErr);
+        if (user == undefined) return new GraphQLError("Failed to create user");
 
         const u = {
           action: Action.CREATE_USER,
           userID: user.id,
-          name: name,
+          name: user.name,
         };
         pubSub.publish("room:user", args.roomID, u);
-        console.log(u);
 
         return true;
       },
@@ -350,9 +348,7 @@ export const schema = createSchema({
 
           // Create user if doesn't exist yet
           if (!(await db.roomExists(args.roomID))) {
-            const name = await userGen.getUsername(args.roomID);
-            console.log(`Room doesn't exist. Creating user "${name}"`);
-            await db.createUser(args.roomID, name).catch(db.throwErr);
+            await userGen.getUsername(args.roomID);
           }
 
           // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
