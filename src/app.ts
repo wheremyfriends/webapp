@@ -13,9 +13,12 @@ import { Socket } from "node:net";
 export function buildApp() {
   const yoga = createYoga({
     landingPage: false,
-    graphiql: {
-      subscriptionsProtocol: "WS",
-    },
+    graphiql:
+      process.env.NODE_ENV === "production"
+        ? false
+        : {
+            subscriptionsProtocol: "WS",
+          },
     schema,
   });
 

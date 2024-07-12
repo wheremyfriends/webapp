@@ -28,5 +28,6 @@ RUN pnpx prisma generate
 
 COPY --from=deps /app/dist .
 
+ENV NODE_ENV production
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "index.js"]
