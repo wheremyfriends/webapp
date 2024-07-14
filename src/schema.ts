@@ -52,6 +52,7 @@ export const schema = createSchema({
 
     type Query {
       getUser: AuthUser
+      getRooms: [String]
     }
 
     enum Action {
@@ -131,6 +132,13 @@ export const schema = createSchema({
     Query: {
       getUser: async (_: unknown, args: {}, context: GraphQLContext) => {
         return context.currentUser;
+      },
+      getRooms: async (_: unknown, args: {}, context: GraphQLContext) => {
+        if (!context.currentUser) return [];
+
+        return (
+          await db.getRooms(context.prisma, context.currentUser.userID)
+        ).map((room) => room.uri);
       },
     },
     Mutation: {
