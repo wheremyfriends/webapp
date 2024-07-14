@@ -26,6 +26,7 @@ interface UserChangeEvent {
   action: Action;
   userID: number;
   name: string;
+  isAuth: boolean;
 }
 
 enum Action {
@@ -78,6 +79,7 @@ export const schema = createSchema({
       action: Action!
       userID: Int!
       name: String!
+      isAuth: Boolean!
     }
 
     type User {
@@ -487,6 +489,7 @@ export const schema = createSchema({
                   action: Action.CREATE_USER,
                   userID: u.user.id,
                   name: u.name,
+                  isAuth: u.user.authUser !== null,
                 });
               });
               await stop;

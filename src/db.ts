@@ -185,7 +185,11 @@ export async function readUsersByRoom(prisma: PrismaClient, roomID: string) {
       },
     },
     include: {
-      user: true,
+      user: {
+        include: {
+          authUser: true,
+        },
+      },
     },
   });
 }
