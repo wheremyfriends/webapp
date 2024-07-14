@@ -2,104 +2,37 @@ import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   jest,
-  test,
 } from "@jest/globals";
+
 import { PrismaClient } from "@prisma/client";
-import { GenericContainer } from "testcontainers";
-import { createClient } from "graphql-ws";
-import WebSocket from "ws";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
-
-const POSTGRES_CONTAINER = "postgres:16.3-alpine3.20";
-const POSTGRES_USER = "test";
-const POSTGRES_PASSWORD = "test";
-const POSTGRES_DB = "wamf";
-const GRAPHQL_PORT = 8000;
-const GRAPHQL_URL = `http://localhost:${GRAPHQL_PORT}/graphql`;
-
-const DEFAULT_POSTGRES_PORT = 5432;
-const execAsync = promisify(exec);
-
+import { globalSetup, GRAPHQL_URL, sendGraphQL } from "../src/test_utils";
 jest.setTimeout(5 * 60 * 1000); // ms
 
-async function startPSQL(
-  containerName: string,
-  postgresUser: string,
-  postgresPassword: string,
-  postgresDB: string,
-  postgresPort: number = DEFAULT_POSTGRES_PORT,
-): Promise<string> {
-  // Start Postgres Container
-  const container = await new GenericContainer(containerName)
-    .withEnvironment({
-      POSTGRES_USER: postgresUser,
-      POSTGRES_PASSWORD: postgresPassword,
-      POSTGRES_DB: postgresDB,
-    })
-    .withExposedPorts(postgresPort)
-    .start();
-
-  const dbPort = container.getMappedPort(postgresPort);
-
-  const conURL = `postgresql://${postgresUser}:${postgresPassword}@localhost:${dbPort}/${postgresDB}`;
-  console.log(`Connection URL: ${conURL}`);
-
-  return conURL;
-}
-
-async function sendGraphQL(url: string, query: string, variables: any) {
-  return fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({ query, variables }),
-  }).then((r) => r.json());
-}
-
-describe("User", () => {
+describe("CRUD of Anonymous User", () => {
   let prisma: PrismaClient;
   let app: any;
 
   beforeAll(async () => {
-    // There are 3 things to start
-    // 1. DB Container
-    // 2. Connection to the DB
-
-    const conURL = await startPSQL(
-      POSTGRES_CONTAINER,
-      POSTGRES_USER,
-      POSTGRES_PASSWORD,
-      POSTGRES_DB,
-    );
-
-    process.env = { ...process.env, DATABASE_URL: conURL };
-    await execAsync("pnpm prisma migrate deploy", {
-      env: process.env,
-    });
-
-    prisma = new PrismaClient({
-      datasourceUrl: conURL,
-    });
-
-    const { buildApp } = await import("../src/app");
-    app = buildApp();
-    await app.start(GRAPHQL_PORT);
+    const out = await globalSetup();
+    app = out.app;
+    prisma = out.prisma;
   });
 
   afterAll(async () => {
     await app.stop();
   });
 
-  afterEach(async () => {
+  beforeEach(async () => {
     await prisma.$executeRawUnsafe(
       `TRUNCATE TABLE "user" RESTART IDENTITY CASCADE ;`,
+    );
+    await prisma.$executeRawUnsafe(
+      `TRUNCATE TABLE "room" RESTART IDENTITY CASCADE ;`,
     );
   });
 
@@ -107,7 +40,7 @@ describe("User", () => {
     const roomID = "room1";
 
     const query = `
-      mutation arst($roomID: String!){
+      mutation createUser($roomID: String!){
         createUser(roomID: $roomID)
       }
     `;
@@ -115,9 +48,11 @@ describe("User", () => {
 
     expect(resp).not.toHaveProperty("errors");
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.usersOnRooms.findMany({
       where: {
-        roomID,
+        room: {
+          uri: roomID,
+        },
       },
     });
 
@@ -127,15 +62,20 @@ describe("User", () => {
   it("add second user", async () => {
     const roomID = "room1";
     // Setup
-    await prisma.user.create({
+    await prisma.room.create({
       data: {
-        roomID,
-        name: "User 1",
+        uri: roomID,
+        users: {
+          create: {
+            name: "User 1",
+            user: { create: {} },
+          },
+        },
       },
     });
 
     const query = `
-      mutation arst($roomID: String!){
+      mutation createUser($roomID: String!){
         createUser(roomID: $roomID)
       }
     `;
@@ -143,9 +83,11 @@ describe("User", () => {
 
     expect(resp).not.toHaveProperty("errors");
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.usersOnRooms.findMany({
       where: {
-        roomID,
+        room: {
+          uri: roomID,
+        },
       },
     });
 
@@ -158,11 +100,12 @@ describe("User", () => {
     const name = "user 1";
     const newname = "user 2";
     // Setup
-    await prisma.user.create({
+    await prisma.room.create({
       data: {
-        id: userID,
-        roomID,
-        name,
+        uri: roomID,
+        users: {
+          create: [{ name: name, user: { create: { id: userID } } }],
+        },
       },
     });
 
@@ -179,10 +122,14 @@ describe("User", () => {
 
     expect(resp).not.toHaveProperty("errors");
 
-    const users = await prisma.user.findUnique({
+    const users = await prisma.usersOnRooms.findFirst({
       where: {
-        id: userID,
-        roomID,
+        user: {
+          id: userID,
+        },
+        room: {
+          uri: roomID,
+        },
       },
     });
 
@@ -215,19 +162,16 @@ describe("User", () => {
     const name2 = "user 2";
 
     // Setup
-    await prisma.user.createMany({
-      data: [
-        {
-          id: 1,
-          roomID,
-          name,
+    await prisma.room.create({
+      data: {
+        uri: roomID,
+        users: {
+          create: [
+            { name: name, user: { create: { id: 1 } } },
+            { name: name2, user: { create: { id: 2 } } },
+          ],
         },
-        {
-          id: 2,
-          roomID,
-          name: name2,
-        },
-      ],
+      },
     });
 
     const query = `
@@ -251,14 +195,18 @@ describe("User", () => {
     const name = "user 1";
 
     // Setup
-    await prisma.user.createMany({
-      data: [
-        {
-          id: userID,
-          roomID,
-          name,
+    await prisma.room.create({
+      data: {
+        uri: roomID,
+        users: {
+          create: {
+            name: name,
+            user: {
+              create: {},
+            },
+          },
         },
-      ],
+      },
     });
 
     const query = `
@@ -274,9 +222,11 @@ describe("User", () => {
 
     expect(resp).not.toHaveProperty("errors");
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.usersOnRooms.findMany({
       where: {
-        roomID,
+        room: {
+          uri: roomID,
+        },
       },
     });
 

@@ -1,4 +1,4 @@
-import { User } from "@prisma/client";
+import { PrismaClient, UsersOnRooms } from "@prisma/client";
 import * as db from "./db";
 import { Roarr as log } from "roarr";
 
@@ -64,7 +64,7 @@ function getRandEle<T>(array: T[]) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-export async function getUsername(roomID: string): Promise<User | undefined> {
+export async function getUsername(prisma: PrismaClient, roomID: string) {
   let tries = ADJECTIVES.length;
 
   let randName;
@@ -76,8 +76,7 @@ export async function getUsername(roomID: string): Promise<User | undefined> {
     log({ randName }, "Generated name");
 
     try {
-      const user = await db.createUser(roomID, randName);
-      return user;
+      return db.createUser(prisma, roomID, randName);
     } catch (e) {
       continue;
     }

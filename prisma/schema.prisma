@@ -14,25 +14,64 @@ datasource db {
 }
 
 // Convention is singular, CamelCase
-model User {
-  id     Int      @id @default(autoincrement())
-  roomID String
-  name   String
-  Lesson Lesson[]
+model AuthUser {
+  user     User   @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userID   Int    @id
+  username String @unique
+  password String
 
-  @@unique([roomID, name])
-  @@map("user")
+  @@map("authuser")
 }
 
 model Lesson {
   id         Int    @id @default(autoincrement())
-  semester   Int
-  moduleCode String
+  module     Module @relation(fields: [moduleID], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  moduleID   Int
   lessonType String
   classNo    String
-  user       User   @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userID     Int
 
-  @@unique([userID, semester, moduleCode, lessonType, classNo])
+  @@unique([moduleID, lessonType, classNo])
   @@map("lesson")
+}
+
+model Module {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userID     Int
+  semester   Int
+  moduleCode String
+  colorIndex Int
+  lessons    Lesson[]
+
+  @@unique([userID, semester, moduleCode])
+  @@map("module")
+}
+
+model User {
+  id       Int              @id @default(autoincrement())
+  rooms    UsersOnRooms[]
+  module   Module[]
+  authUser AuthUser?
+
+  @@map("user")
+}
+
+model Room {
+  id    Int              @id @default(autoincrement())
+  uri   String           @unique
+  users UsersOnRooms[]
+
+  @@map("room")
+}
+
+model UsersOnRooms {
+  user   User   @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userID Int
+  room   Room   @relation(fields: [roomID], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  roomID Int
+  name   String
+
+  @@id([userID, roomID])
+  @@unique([roomID, name])
+  @@map("user_room")
 }

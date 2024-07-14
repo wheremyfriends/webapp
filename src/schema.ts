@@ -1,10 +1,17 @@
-import { Repeater, createPubSub, createSchema } from "graphql-yoga";
+import {
+  Repeater,
+  YogaInitialContext,
+  createPubSub,
+  createSchema,
+} from "graphql-yoga";
 import * as db from "./db";
 import * as userGen from "./userGen";
 import { GraphQLError } from "graphql";
-import { User } from "@prisma/client";
 
 import { Roarr as log } from "roarr";
+import { GraphQLContext } from "./context";
+import { authGuard } from "./auth";
+import { QueryDocumentKeys } from "graphql/language/ast";
 
 interface LessonEvent {
   action: Action;
@@ -38,8 +45,13 @@ const pubSub = createPubSub<{
 
 export const schema = createSchema({
   typeDefs: /* GraphQL */ `
+    type AuthUser {
+      userID: Int!
+      username: String!
+    }
+
     type Query {
-      info: Boolean!
+      getUser: AuthUser
     }
 
     enum Action {
@@ -75,7 +87,7 @@ export const schema = createSchema({
 
     type Mutation {
       createLesson(
-        roomID: String!
+        roomID: String
         userID: Int!
         semester: Int!
         moduleCode: String!
@@ -84,7 +96,7 @@ export const schema = createSchema({
       ): Boolean
 
       deleteLesson(
-        roomID: String!
+        roomID: String
         userID: Int!
         semester: Int!
         moduleCode: String!
@@ -93,7 +105,7 @@ export const schema = createSchema({
       ): Boolean
 
       deleteModule(
-        roomID: String!
+        roomID: String
         userID: Int!
         semester: Int!
         moduleCode: String!
@@ -104,6 +116,10 @@ export const schema = createSchema({
       createUser(roomID: String!): Boolean
       updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
       deleteUser(roomID: String!, userID: Int!): Boolean
+
+      registerUser(username: String!, password: String!): Boolean
+      loginUser(username: String!, password: String!): AuthUser
+      logoutUser: Boolean
     }
 
     type Subscription {
@@ -112,15 +128,24 @@ export const schema = createSchema({
     }
   `,
   resolvers: {
+    Query: {
+      getUser: async (_: unknown, args: {}, context: GraphQLContext) => {
+        return context.currentUser;
+      },
+    },
     Mutation: {
-      createUser: async (_: unknown, args: { roomID: string }) => {
-        const user = await userGen.getUsername(args.roomID);
+      createUser: async (
+        _: unknown,
+        args: { roomID: string },
+        context: GraphQLContext,
+      ) => {
+        const user = await userGen.getUsername(context.prisma, args.roomID);
 
         if (user == undefined) return new GraphQLError("Failed to create user");
 
         const u = {
           action: Action.CREATE_USER,
-          userID: user.id,
+          userID: user.userID,
           name: user.name,
         };
         pubSub.publish("room:user", args.roomID, u);
@@ -132,9 +157,10 @@ export const schema = createSchema({
       updateUser: async (
         _: unknown,
         args: { roomID: string; userID: number; newname: string },
+        context: GraphQLContext,
       ) => {
         await db
-          .updateUser(args.roomID, args.userID, args.newname)
+          .updateUser(context.prisma, args.roomID, args.userID, args.newname)
           .catch(db.throwErr);
 
         const u = {
@@ -152,15 +178,16 @@ export const schema = createSchema({
       deleteUser: async (
         _: unknown,
         args: { roomID: string; userID: number },
+        context: GraphQLContext,
       ) => {
-        const deletedUser = await db
-          .deleteUser(args.roomID, args.userID)
+        await db
+          .deleteUser(context.prisma, args.roomID, args.userID)
           .catch(db.throwErr);
 
         const u = {
           action: Action.DELETE_USER,
           userID: args.userID,
-          name: deletedUser.name,
+          name: "",
         };
         pubSub.publish("room:user", args.roomID, u);
         log(u, "deleteUser");
@@ -171,24 +198,26 @@ export const schema = createSchema({
       createLesson: async (
         _: unknown,
         args: {
-          roomID: string;
+          roomID: string | undefined;
           userID: number;
           semester: number;
           moduleCode: string;
           lessonType: string;
           classNo: string;
         },
+        context: GraphQLContext,
       ) => {
-        const user = await db
-          .readUser(args.roomID, args.userID)
-          .catch(db.throwErr);
-
-        if (user == undefined)
-          return Promise.reject(new GraphQLError("User not found"));
+        await authGuard(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
 
         await db
           .createLesson(
-            user.id,
+            context.prisma,
+            args.userID,
             args.semester,
             args.moduleCode,
             args.lessonType,
@@ -198,14 +227,18 @@ export const schema = createSchema({
 
         const l = {
           action: Action.CREATE_LESSON,
-          userID: user.id,
+          userID: args.userID,
           semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
           classNo: args.classNo,
         };
-        pubSub.publish("room:lesson", args.roomID, l);
-        log(l, "createLesson");
+
+        const rooms = await db.getRooms(context.prisma, args.userID);
+        rooms.forEach((room) => {
+          pubSub.publish("room:lesson", room.uri, l);
+          log(l, "createLesson");
+        });
 
         return true;
       },
@@ -220,17 +253,19 @@ export const schema = createSchema({
           lessonType: string;
           classNo: string;
         },
+        context: GraphQLContext,
       ) => {
-        const user = await db
-          .readUser(args.roomID, args.userID)
-          .catch(db.throwErr);
-
-        if (user == undefined)
-          return Promise.reject(new GraphQLError("User not found"));
+        authGuard(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
 
         await db
           .deleteLesson(
-            user.id,
+            context.prisma,
+            args.userID,
             args.semester,
             args.moduleCode,
             args.lessonType,
@@ -240,14 +275,18 @@ export const schema = createSchema({
 
         const l = {
           action: Action.DELETE_LESSON,
-          userID: user.id,
+          userID: args.userID,
           semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
           classNo: args.classNo,
         };
-        pubSub.publish("room:lesson", args.roomID, l);
-        log(l, "deleteLesson");
+
+        const rooms = await db.getRooms(context.prisma, args.userID);
+        rooms.forEach((room) => {
+          pubSub.publish("room:lesson", room.uri, l);
+          log(l, "deleteLesson");
+        });
 
         return true;
       },
@@ -260,28 +299,35 @@ export const schema = createSchema({
           semester: number;
           moduleCode: string;
         },
+        context: GraphQLContext,
       ) => {
-        const user = await db
-          .readUser(args.roomID, args.userID)
-          .catch(db.throwErr);
+        authGuard(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
 
-        if (user == undefined)
-          return Promise.reject(new GraphQLError("User not found"));
-
-        await db
-          .deleteFromLesson(user.id, args.semester, args.moduleCode)
-          .catch(db.throwErr);
+        await db.moduleDelete(
+          context.prisma,
+          args.userID,
+          args.semester,
+          args.moduleCode,
+        );
 
         const l = {
           action: Action.DELETE_MODULE,
-          userID: user.id,
+          userID: args.userID,
           semester: args.semester,
           moduleCode: args.moduleCode,
           lessonType: "",
           classNo: "",
         };
-        pubSub.publish("room:lesson", args.roomID, l);
-        log(l, "deleteModule");
+        const rooms = await db.getRooms(context.prisma, args.userID);
+        rooms.forEach((room) => {
+          pubSub.publish("room:lesson", room.uri, l);
+          log(l, "deleteModule");
+        });
 
         return true;
       },
@@ -293,34 +339,93 @@ export const schema = createSchema({
           userID: number;
           semester: number;
         },
+        context: GraphQLContext,
       ) => {
-        const user = await db
-          .readUser(args.roomID, args.userID)
+        authGuard(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
+
+        await db
+          .deleteFromLesson(context.prisma, args.userID, args.semester)
           .catch(db.throwErr);
-
-        if (user == undefined)
-          return Promise.reject(new GraphQLError("User not found"));
-
-        await db.deleteFromLesson(user.id, args.semester).catch(db.throwErr);
 
         const l = {
           action: Action.RESET_TIMETABLE,
-          userID: user.id,
+          userID: args.userID,
           semester: args.semester,
           moduleCode: "",
           lessonType: "",
           classNo: "",
         };
-        pubSub.publish("room:lesson", args.roomID, l);
-        log(l, "resetTimetable");
+        const rooms = await db.getRooms(context.prisma, args.userID);
+        rooms.forEach((room) => {
+          pubSub.publish("room:lesson", room.uri, l);
+          log(l, "resetTimetable");
+        });
 
+        return true;
+      },
+      registerUser: async (
+        _: unknown,
+        args: { username: string; password: string },
+        context: GraphQLContext,
+      ) => {
+        await db.authUserCreate(context.prisma, args.username, args.password);
+        return true;
+      },
+
+      loginUser: async (
+        _: unknown,
+        args: { username: string; password: string },
+        context: GraphQLContext & YogaInitialContext,
+      ) => {
+        const res = await db.authUserVerify(
+          context.prisma,
+          args.username,
+          args.password,
+        );
+
+        if (!res) {
+          throw new GraphQLError("Login failed");
+        }
+
+        const { token, user } = res;
+
+        // Set the cookie on the response
+        context.request.cookieStore?.set({
+          name: "authorization",
+          sameSite: "strict",
+          secure: true,
+          domain: "localhost",
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+          value: token,
+          httpOnly: true,
+        });
+
+        return user;
+      },
+
+      logoutUser: async (
+        _: unknown,
+        args: {},
+        context: GraphQLContext & YogaInitialContext,
+      ) => {
+        // Set the cookie on the response
+        context.request.cookieStore?.delete("authorization");
         return true;
       },
     },
 
     Subscription: {
       lessonChange: {
-        subscribe: async (_, args: { roomID: string }) => {
+        subscribe: async (
+          _,
+          args: { roomID: string },
+          context: GraphQLContext,
+        ) => {
           log({ roomID: args.roomID }, "lessonChange subscription");
 
           // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
@@ -328,15 +433,15 @@ export const schema = createSchema({
             new Repeater(async (push, stop) => {
               // Get initial values
               const lessons = await db
-                .readLessonsByRoom(args.roomID)
+                .readLessonsByRoom(context.prisma, args.roomID)
                 .catch(db.throwErr);
 
-              lessons.forEach((l: any) => {
+              lessons.forEach((l) => {
                 push({
                   action: Action.CREATE_LESSON,
-                  userID: l.user.id,
-                  semester: l.semester,
-                  moduleCode: l.moduleCode,
+                  userID: l.module.userID,
+                  semester: l.module.semester,
+                  moduleCode: l.module.moduleCode,
                   lessonType: l.lessonType,
                   classNo: l.classNo,
                 });
@@ -350,25 +455,29 @@ export const schema = createSchema({
       },
 
       userChange: {
-        subscribe: async (_, args: { roomID: string }) => {
+        subscribe: async (
+          _,
+          args: { roomID: string },
+          context: GraphQLContext,
+        ) => {
           log({ roomID: args.roomID }, "userChange subscription");
 
           // Create user if doesn't exist yet
-          if (!(await db.roomExists(args.roomID)))
-            await userGen.getUsername(args.roomID);
+          if (!(await db.roomExists(context.prisma, args.roomID)))
+            await userGen.getUsername(context.prisma, args.roomID);
 
           // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
           return Repeater.merge([
             new Repeater(async (push, stop) => {
               // Get initial values
               const users = await db
-                .readUsersByRoom(args.roomID)
+                .readUsersByRoom(context.prisma, args.roomID)
                 .catch(db.throwErr);
 
-              users.forEach((u: User) => {
+              users.forEach((u) => {
                 push({
                   action: Action.CREATE_USER,
-                  userID: u.id,
+                  userID: u.user.id,
                   name: u.name,
                 });
               });
