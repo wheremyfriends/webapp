@@ -115,6 +115,9 @@ export async function deleteUser(
         },
       },
     },
+    include: {
+      authUser: true,
+    },
   });
 }
 

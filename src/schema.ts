@@ -157,6 +157,7 @@ export const schema = createSchema({
           action: Action.CREATE_USER,
           userID: user.userID,
           name: user.name,
+          isAuth: false,
         };
         pubSub.publish("room:user", args.roomID, u);
         log(u, "createUser");
@@ -173,10 +174,12 @@ export const schema = createSchema({
           .updateUser(context.prisma, args.roomID, args.userID, args.newname)
           .catch(db.throwErr);
 
+        const isAuth = await db.isAuthUserID(context.prisma, args.userID);
         const u = {
           action: Action.UPDATE_USER,
           userID: args.userID,
           name: args.newname,
+          isAuth,
         };
 
         pubSub.publish("room:user", args.roomID, u);
@@ -190,7 +193,7 @@ export const schema = createSchema({
         args: { roomID: string; userID: number },
         context: GraphQLContext,
       ) => {
-        await db
+        const user = await db
           .deleteUser(context.prisma, args.roomID, args.userID)
           .catch(db.throwErr);
 
@@ -198,6 +201,7 @@ export const schema = createSchema({
           action: Action.DELETE_USER,
           userID: args.userID,
           name: "",
+          isAuth: user.authUser !== null,
         };
         pubSub.publish("room:user", args.roomID, u);
         log(u, "deleteUser");
