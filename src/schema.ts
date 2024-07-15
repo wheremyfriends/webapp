@@ -114,7 +114,7 @@ export const schema = createSchema({
         moduleCode: String!
       ): Boolean
 
-      resetTimetable(roomID: String!, userID: Int!, semester: Int!): Boolean
+      resetTimetable(roomID: String, userID: Int!, semester: Int!): Boolean
 
       createUser(roomID: String!): Boolean
       updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
