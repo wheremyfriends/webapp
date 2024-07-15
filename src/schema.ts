@@ -54,6 +54,7 @@ export const schema = createSchema({
     type Query {
       getUser: AuthUser
       getRooms: [String]
+      getConfig: [String]
     }
 
     enum Action {
@@ -120,6 +121,9 @@ export const schema = createSchema({
       updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
       deleteUser(roomID: String!, userID: Int!): Boolean
 
+      updateConfig(roomID: String, userID: Int!, data: String!): Boolean
+      updateSol(roomID: String, userID: Int!, data: String!): Boolean
+
       registerUser(username: String!, password: String!): Boolean
       loginUser(username: String!, password: String!): AuthUser
       logoutUser: Boolean
@@ -136,6 +140,13 @@ export const schema = createSchema({
         return context.currentUser;
       },
       getRooms: async (_: unknown, args: {}, context: GraphQLContext) => {
+        if (!context.currentUser) return [];
+
+        return (
+          await db.getRooms(context.prisma, context.currentUser.userID)
+        ).map((room) => room.uri);
+      },
+      getConfig: async (_: unknown, args: {}, context: GraphQLContext) => {
         if (!context.currentUser) return [];
 
         return (
@@ -382,6 +393,41 @@ export const schema = createSchema({
 
         return true;
       },
+
+      updateConfig: async (
+        _: unknown,
+        args: { roomID: string; userID: number; data: string },
+        context: GraphQLContext,
+      ) => {
+        await authGuard(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
+
+        await db.setConfig(context.prisma, args.userID, JSON.parse(args.data));
+      },
+
+      updateSol: async (
+        _: unknown,
+        args: { roomID: string; userID: number; data: string },
+        context: GraphQLContext,
+      ) => {
+        await authGuard(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
+
+        await db.setSolution(
+          context.prisma,
+          args.userID,
+          JSON.parse(args.data),
+        );
+      },
+
       registerUser: async (
         _: unknown,
         args: { username: string; password: string },

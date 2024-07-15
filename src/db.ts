@@ -322,3 +322,41 @@ export async function isAuthUserID(prisma: PrismaClient, userID: number) {
     })) > 0
   );
 }
+
+export async function setConfig(
+  prisma: PrismaClient,
+  userID: number,
+  json: Prisma.JsonArray,
+) {
+  return await prisma.config.upsert({
+    where: {
+      userID,
+    },
+    update: {
+      data: json,
+    },
+    create: {
+      userID,
+      data: json,
+    },
+  });
+}
+
+export async function setSolution(
+  prisma: PrismaClient,
+  userID: number,
+  json: Prisma.JsonArray,
+) {
+  return await prisma.solution.upsert({
+    where: {
+      userID,
+    },
+    update: {
+      data: json,
+    },
+    create: {
+      userID,
+      data: json,
+    },
+  });
+}
