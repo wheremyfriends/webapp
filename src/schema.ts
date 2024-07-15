@@ -269,7 +269,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        authGuard(
+        await authGuard(
           context.prisma,
           args.roomID,
           args.userID,
@@ -315,7 +315,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        authGuard(
+        await authGuard(
           context.prisma,
           args.roomID,
           args.userID,
@@ -355,7 +355,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        authGuard(
+        await authGuard(
           context.prisma,
           args.roomID,
           args.userID,
