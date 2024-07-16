@@ -350,21 +350,21 @@ export async function setConfig(
   });
 }
 
-export async function setSolution(
-  prisma: PrismaClient,
-  userID: number,
-  json: Prisma.JsonArray,
-) {
-  return await prisma.solution.upsert({
-    where: {
-      userID,
-    },
-    update: {
-      data: json,
-    },
-    create: {
-      userID,
-      data: json,
-    },
-  });
-}
+// export async function setSolution(
+//   prisma: PrismaClient,
+//   userID: number,
+//   json: Prisma.JsonArray,
+// ) {
+//   return await prisma.solution.upsert({
+//     where: {
+//       userID,
+//     },
+//     update: {
+//       data: json,
+//     },
+//     create: {
+//       userID,
+//       data: json,
+//     },
+//   });
+// }

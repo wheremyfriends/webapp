@@ -123,7 +123,6 @@ export const schema = createSchema({
       deleteUser(roomID: String!, userID: Int!): Boolean
 
       updateConfig(roomID: String, userID: Int!, data: String!): Boolean
-      updateSol(roomID: String, userID: Int!, data: String!): Boolean
 
       registerUser(username: String!, password: String!): Boolean
       loginUser(username: String!, password: String!): AuthUser
@@ -414,24 +413,24 @@ export const schema = createSchema({
         log(JSON.parse(args.data), "updateConfig");
       },
 
-      updateSol: async (
-        _: unknown,
-        args: { roomID: string; userID: number; data: string },
-        context: GraphQLContext,
-      ) => {
-        await authGuard(
-          context.prisma,
-          args.roomID,
-          args.userID,
-          context.currentUser,
-        );
-
-        await db.setSolution(
-          context.prisma,
-          args.userID,
-          JSON.parse(args.data),
-        );
-      },
+      // updateSol: async (
+      //   _: unknown,
+      //   args: { roomID: string; userID: number; data: string },
+      //   context: GraphQLContext,
+      // ) => {
+      //   await authGuard(
+      //     context.prisma,
+      //     args.roomID,
+      //     args.userID,
+      //     context.currentUser,
+      //   );
+      //
+      //   await db.setSolution(
+      //     context.prisma,
+      //     args.userID,
+      //     JSON.parse(args.data),
+      //   );
+      // },
 
       registerUser: async (
         _: unknown,
