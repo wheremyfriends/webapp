@@ -463,7 +463,7 @@ export const schema = createSchema({
           name: "authorization",
           sameSite: "strict",
           secure: true,
-          domain: context.request.url,
+          domain: null,
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
           value: token,
           httpOnly: true,
