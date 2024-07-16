@@ -42,6 +42,7 @@ enum Action {
 const pubSub = createPubSub<{
   "room:lesson": [roomID: string, payload: LessonEvent];
   "room:user": [roomID: string, payload: UserChangeEvent];
+  "user:config": [userID: number, payload: string];
 }>();
 
 export const schema = createSchema({
@@ -132,6 +133,7 @@ export const schema = createSchema({
     type Subscription {
       lessonChange(roomID: String!): LessonChangeEvent
       userChange(roomID: String!): UserChangeEvent
+      configChange(userID: Int!): String
     }
   `,
   resolvers: {
@@ -407,6 +409,9 @@ export const schema = createSchema({
         );
 
         await db.setConfig(context.prisma, args.userID, JSON.parse(args.data));
+
+        pubSub.publish("user:config", args.userID, args.data);
+        log(JSON.parse(args.data), "updateConfig");
       },
 
       updateSol: async (
@@ -545,6 +550,31 @@ export const schema = createSchema({
               await stop;
             }),
             pubSub.subscribe("room:user", args.roomID),
+          ]);
+        },
+        resolve: (payload) => payload,
+      },
+
+      configChange: {
+        subscribe: async (
+          _,
+          args: { userID: number },
+          context: GraphQLContext,
+        ) => {
+          log({ userID: args.userID }, "configChange subscription");
+
+          // https://stackoverflow.com/questions/73924084/unable-to-get-initial-data-using-graphql-ws-subscription
+          return Repeater.merge([
+            new Repeater(async (push, stop) => {
+              // Get initial values
+              const config = await db
+                .getConfig(context.prisma, args.userID)
+                .catch(db.throwErr);
+
+              if (config) push(JSON.stringify(config.data));
+              await stop;
+            }),
+            pubSub.subscribe("user:config", args.userID),
           ]);
         },
         resolve: (payload) => payload,

@@ -323,6 +323,14 @@ export async function isAuthUserID(prisma: PrismaClient, userID: number) {
   );
 }
 
+export async function getConfig(prisma: PrismaClient, userID: number) {
+  return await prisma.config.findUnique({
+    where: {
+      userID,
+    },
+  });
+}
+
 export async function setConfig(
   prisma: PrismaClient,
   userID: number,

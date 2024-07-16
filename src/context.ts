@@ -15,14 +15,16 @@ prisma.$on("query", async (e) => {
   console.log(`${e.query} ${e.params}`);
 });
 
-export type GraphQLContext = {
+export type GraphQLContext = MyContext & YogaInitialContext;
+
+type MyContext = {
   prisma: PrismaClient;
   currentUser: null | AuthUser;
 };
 
 export async function createContext(
   initialContext: YogaInitialContext,
-): Promise<GraphQLContext> {
+): Promise<MyContext> {
   return {
     prisma,
     currentUser: await authenticateUser(prisma, initialContext.request),
