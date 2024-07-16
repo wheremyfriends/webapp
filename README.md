@@ -47,7 +47,7 @@ erDiagram
 
     AuthUser {
        string username
-       string password 
+       string password
     }
 
     Room {

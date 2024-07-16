@@ -48,18 +48,18 @@ model Module {
 }
 
 model User {
-  id       Int              @id @default(autoincrement())
+  id       Int            @id @default(autoincrement())
   rooms    UsersOnRooms[]
   module   Module[]
   authUser AuthUser?
-  config Config?
+  config   Config?
 
   @@map("user")
 }
 
 model Room {
-  id    Int              @id @default(autoincrement())
-  uri   String           @unique
+  id    Int            @id @default(autoincrement())
+  uri   String         @unique
   users UsersOnRooms[]
 
   @@map("room")
@@ -78,9 +78,9 @@ model UsersOnRooms {
 }
 
 model Config {
-  user   User   @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userID Int @id
-  data Json
+  user   User @relation(fields: [userID], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userID Int  @id
+  data   Json
 
   @@map("config")
 }
