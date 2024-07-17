@@ -276,16 +276,24 @@ export async function authUserCreate(
   const SALT_LENGTH = 10;
   const pwHash = await hash(password, SALT_LENGTH);
 
-  return prisma.user.create({
-    data: {
-      authUser: {
-        create: {
-          username,
-          password: pwHash,
+  return await prisma.user
+    .create({
+      data: {
+        authUser: {
+          create: {
+            username,
+            password: pwHash,
+          },
         },
       },
-    },
-  });
+    })
+    .catch((e: Prisma.PrismaClientKnownRequestError) => {
+      if (e.code === DB_ERR.UNIQUE_CONSTRAINT_FAILED) {
+        throw new GraphQLError("Username taken.");
+      }
+
+      throw e;
+    });
 }
 
 export async function authUserVerify(
