@@ -10,7 +10,7 @@ import { GraphQLError } from "graphql";
 
 import { Roarr as log } from "roarr";
 import { GraphQLContext } from "./context";
-import { isAuthenticated, checkAuthOrAnon } from "./auth";
+import { checkAuthOrAnon } from "./auth";
 
 interface LessonEvent {
   action: Action;

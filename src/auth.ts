@@ -1,6 +1,6 @@
 import { AuthUser, PrismaClient } from "@prisma/client";
 import { JwtPayload, verify } from "jsonwebtoken";
-import { isAuthUserID, readUser } from "./db";
+import { isAuthUserID, readUser, throwErr } from "./db";
 import { GraphQLError } from "graphql";
 
 export const APP_SECRET = process.env["APP_SECRET"]!;
@@ -35,7 +35,7 @@ export async function checkAuthOrAnon(
 
   if (roomURI) {
     // If anonymous user, then the roomID and userID must tally
-    const user = await readUser(prisma, roomURI, userID);
+    const user = await readUser(prisma, roomURI, userID).catch(throwErr);
     if (user) return;
   }
 

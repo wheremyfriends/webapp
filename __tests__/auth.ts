@@ -61,7 +61,7 @@ describe("CRUD of Anonymous User", () => {
 
     const query = `
       mutation fn($username: String!, $password: String!){
-        loginUser(username: $username, password: $password)
+        loginUser(username: $username, password: $password){userID}
       }
     `;
 
@@ -82,7 +82,7 @@ describe("CRUD of Anonymous User", () => {
 
     const query = `
       mutation fn($username: String!, $password: String!){
-        loginUser(username: $username, password: $password)
+        loginUser(username: $username, password: $password){userID}
       }
     `;
 

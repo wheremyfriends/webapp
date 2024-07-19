@@ -10,7 +10,6 @@ export enum DB_ERR {
 }
 
 export function throwErr(e: Prisma.PrismaClientKnownRequestError) {
-  console.log({ e });
   if (e.code == DB_ERR.UNIQUE_CONSTRAINT_FAILED)
     return Promise.reject(new GraphQLError(`Record already exists`));
 
