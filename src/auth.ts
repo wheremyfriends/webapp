@@ -19,7 +19,8 @@ export async function authenticateUser(
   return prisma.authUser.findUnique({ where: { userID: userId } });
 }
 
-export async function authGuard(
+// Throws error if user is not authenticated and and not anonymous user
+export async function checkAuthOrAnon(
   prisma: PrismaClient,
   roomURI: string | undefined,
   userID: number,
@@ -28,12 +29,15 @@ export async function authGuard(
   if (await isAuthUserID(prisma, userID)) {
     // If authorised, then the JWT must match the userID
     if (currentUser?.userID === userID) return;
-  } else if (roomURI) {
+
+    throw new GraphQLError("Unauthorised");
+  }
+
+  if (roomURI) {
     // If anonymous user, then the roomID and userID must tally
     const user = await readUser(prisma, roomURI, userID);
     if (user) return;
   }
 
-  console.log("Unauthorised");
   throw new GraphQLError("Unauthorised");
 }
