@@ -10,8 +10,7 @@ import { GraphQLError } from "graphql";
 
 import { Roarr as log } from "roarr";
 import { GraphQLContext } from "./context";
-import { authGuard } from "./auth";
-import { QueryDocumentKeys } from "graphql/language/ast";
+import { isAuthenticated, checkAuthOrAnon } from "./auth";
 
 interface LessonEvent {
   action: Action;
@@ -118,6 +117,7 @@ export const schema = createSchema({
 
       resetTimetable(roomID: String, userID: Int!, semester: Int!): Boolean
 
+      joinRoom(roomID: String!): Boolean
       createUser(roomID: String!): Boolean
       updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
       deleteUser(roomID: String!, userID: Int!): Boolean
@@ -177,11 +177,61 @@ export const schema = createSchema({
         return true;
       },
 
+      joinRoom: async (
+        _: unknown,
+        args: { roomID: string },
+        context: GraphQLContext,
+      ) => {
+        if (!context.currentUser) return false;
+
+        await db.joinRoom(
+          context.prisma,
+          args.roomID,
+          context.currentUser.userID,
+        );
+
+        // Send subscription to add user
+        const u = {
+          action: Action.CREATE_USER,
+          userID: context.currentUser.userID,
+          name: context.currentUser.username,
+          isAuth: true,
+        };
+
+        pubSub.publish("room:user", args.roomID, u);
+        log(u, "joinRoom");
+
+        // Send subscription of all mods of user
+        const lessons = await db.getLessons(context.prisma, {
+          userID: context.currentUser.userID,
+        });
+
+        lessons.forEach((l) =>
+          pubSub.publish("room:lesson", args.roomID, {
+            action: Action.CREATE_LESSON,
+            userID: l.module.userID,
+            semester: l.module.semester,
+            moduleCode: l.module.moduleCode,
+            lessonType: l.lessonType,
+            classNo: l.classNo,
+          }),
+        );
+
+        return true;
+      },
+
       updateUser: async (
         _: unknown,
         args: { roomID: string; userID: number; newname: string },
         context: GraphQLContext,
       ) => {
+        await checkAuthOrAnon(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
+
         await db
           .updateUser(context.prisma, args.roomID, args.userID, args.newname)
           .catch(db.throwErr);
@@ -205,16 +255,39 @@ export const schema = createSchema({
         args: { roomID: string; userID: number },
         context: GraphQLContext,
       ) => {
-        const user = await db
-          .deleteUser(context.prisma, args.roomID, args.userID)
-          .catch(db.throwErr);
+        await checkAuthOrAnon(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
 
-        const u = {
-          action: Action.DELETE_USER,
-          userID: args.userID,
-          name: "",
-          isAuth: user.authUser !== null,
-        };
+        const isAuth = await db.isAuthUserID(context.prisma, args.userID);
+
+        let u;
+        if (isAuth) {
+          await db.leaveRoom(context.prisma, args.roomID, args.userID);
+          const user = context.currentUser;
+
+          u = {
+            action: Action.DELETE_USER,
+            userID: args.userID,
+            name: "",
+            isAuth: true,
+          };
+        } else {
+          const user = await db
+            .deleteUser(context.prisma, args.roomID, args.userID)
+            .catch(db.throwErr);
+
+          u = {
+            action: Action.DELETE_USER,
+            userID: args.userID,
+            name: "",
+            isAuth: user.authUser !== null,
+          };
+        }
+
         pubSub.publish("room:user", args.roomID, u);
         log(u, "deleteUser");
 
@@ -233,7 +306,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        await authGuard(
+        await checkAuthOrAnon(
           context.prisma,
           args.roomID,
           args.userID,
@@ -281,7 +354,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        await authGuard(
+        await checkAuthOrAnon(
           context.prisma,
           args.roomID,
           args.userID,
@@ -327,7 +400,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        await authGuard(
+        await checkAuthOrAnon(
           context.prisma,
           args.roomID,
           args.userID,
@@ -367,7 +440,7 @@ export const schema = createSchema({
         },
         context: GraphQLContext,
       ) => {
-        await authGuard(
+        await checkAuthOrAnon(
           context.prisma,
           args.roomID,
           args.userID,
@@ -400,7 +473,7 @@ export const schema = createSchema({
         args: { roomID: string; userID: number; data: string },
         context: GraphQLContext,
       ) => {
-        await authGuard(
+        await checkAuthOrAnon(
           context.prisma,
           args.roomID,
           args.userID,
@@ -497,7 +570,7 @@ export const schema = createSchema({
             new Repeater(async (push, stop) => {
               // Get initial values
               const lessons = await db
-                .readLessonsByRoom(context.prisma, args.roomID)
+                .getLessons(context.prisma, { roomID: args.roomID })
                 .catch(db.throwErr);
 
               lessons.forEach((l) => {
@@ -535,7 +608,7 @@ export const schema = createSchema({
             new Repeater(async (push, stop) => {
               // Get initial values
               const users = await db
-                .readUsersByRoom(context.prisma, args.roomID)
+                .getUsers(context.prisma, args.roomID)
                 .catch(db.throwErr);
 
               users.forEach((u) => {

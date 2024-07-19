@@ -32,6 +32,72 @@ export async function roomExists(
 
   return users.length > 0;
 }
+
+export async function joinRoom(
+  prisma: PrismaClient,
+  roomID: string,
+  userID: number,
+) {
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.authUser.findUnique({
+      where: {
+        userID,
+      },
+    });
+
+    if (!user) return undefined;
+
+    return await tx.usersOnRooms.create({
+      data: {
+        room: {
+          connectOrCreate: {
+            where: {
+              uri: roomID,
+            },
+            create: {
+              uri: roomID,
+            },
+          },
+        },
+        user: {
+          connect: {
+            id: userID,
+          },
+        },
+        name: user.username,
+      },
+    });
+  });
+}
+
+export async function leaveRoom(
+  prisma: PrismaClient,
+  roomID: string,
+  userID: number,
+) {
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.authUser.findUnique({
+      where: {
+        userID,
+      },
+    });
+
+    if (!user) return undefined;
+
+    // TODO: Fix later
+    return await tx.usersOnRooms.deleteMany({
+      where: {
+        room: {
+          uri: roomID,
+        },
+        user: {
+          id: userID,
+        },
+      },
+    });
+  });
+}
+
 export async function createUser(
   prisma: PrismaClient,
   roomID: string,
@@ -180,7 +246,7 @@ export async function getRooms(prisma: PrismaClient, userID: number) {
   });
 }
 
-export async function readUsersByRoom(prisma: PrismaClient, roomID: string) {
+export async function getUsers(prisma: PrismaClient, roomID: string) {
   return prisma.usersOnRooms.findMany({
     where: {
       room: {
@@ -197,11 +263,15 @@ export async function readUsersByRoom(prisma: PrismaClient, roomID: string) {
   });
 }
 
-export async function readLessonsByRoom(prisma: PrismaClient, roomID: string) {
+export async function getLessons(
+  prisma: PrismaClient,
+  { roomID, userID }: { roomID?: string; userID?: number },
+) {
   return prisma.lesson.findMany({
     where: {
       module: {
         user: {
+          id: userID,
           rooms: {
             some: {
               room: {
