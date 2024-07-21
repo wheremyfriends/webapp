@@ -13,18 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: earthly/actions-setup@v1
+        with:
+          version: v0.8.0
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install && pnpm prisma generate
-
-      - name: Run tests
-        run: pnpm test
+      - name: Run build
+        run: earthly -P +integration-test
