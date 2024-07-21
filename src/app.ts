@@ -4,6 +4,8 @@ import { useServer } from "graphql-ws/lib/use/ws";
 import { schema } from "./schema";
 import { WebSocketServer } from "ws";
 import { Socket } from "node:net";
+import { createContext } from "./context";
+import { useCookies } from "@whatwg-node/server-plugin-cookies";
 
 // // Start the server and you're done!
 // server.listen(4000, () => {
@@ -20,6 +22,8 @@ export function buildApp() {
             subscriptionsProtocol: "WS",
           },
     schema,
+    context: createContext,
+    plugins: [useCookies()],
   });
 
   const server = createServer(yoga);
