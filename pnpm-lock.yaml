@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@graphql-yoga/plugin-csrf-prevention':
+        specifier: ^3.6.1
+        version: 3.6.1(graphql-yoga@5.6.0(graphql@16.9.0))
       '@prisma/client':
         specifier: ^5.16.2
         version: 5.16.2(prisma@5.16.2)
@@ -755,6 +758,12 @@ packages:
   '@graphql-yoga/logger@2.0.0':
     resolution: {integrity: sha512-Mg8psdkAp+YTG1OGmvU+xa6xpsAmSir0hhr3yFYPyLNwzUj95DdIwsMpKadDj9xDpYgJcH3Hp/4JMal9DhQimA==}
     engines: {node: '>=18.0.0'}
+
+  '@graphql-yoga/plugin-csrf-prevention@3.6.1':
+    resolution: {integrity: sha512-PYWGHDcKoCAIU6K3cbk9gwcseogm46j46b/QVeBbB2qFzDcW0N7euJveuMBWZJf2/PQhoovuYz7qsDiSmuit4g==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      graphql-yoga: ^5.6.1
 
   '@graphql-yoga/subscription@5.0.1':
     resolution: {integrity: sha512-1wCB1DfAnaLzS+IdoOzELGGnx1ODEg9nzQXFh4u2j02vAnne6d+v4A7HIH9EqzVdPLoAaMKXCZUUdKs+j3z1fg==}
@@ -3684,6 +3693,10 @@ snapshots:
   '@graphql-yoga/logger@2.0.0':
     dependencies:
       tslib: 2.6.3
+
+  '@graphql-yoga/plugin-csrf-prevention@3.6.1(graphql-yoga@5.6.0(graphql@16.9.0))':
+    dependencies:
+      graphql-yoga: 5.6.0(graphql@16.9.0)
 
   '@graphql-yoga/subscription@5.0.1':
     dependencies:

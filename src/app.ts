@@ -6,6 +6,7 @@ import { WebSocketServer } from "ws";
 import { Socket } from "node:net";
 import { createContext } from "./context";
 import { useCookies } from "@whatwg-node/server-plugin-cookies";
+import { useCSRFPrevention } from "@graphql-yoga/plugin-csrf-prevention";
 
 // // Start the server and you're done!
 // server.listen(4000, () => {
@@ -23,7 +24,12 @@ export function buildApp() {
           },
     schema,
     context: createContext,
-    plugins: [useCookies()],
+    plugins: [
+      useCookies(),
+      useCSRFPrevention({
+        requestHeaders: ["x-graphql-yoga-csrf"], // default
+      }),
+    ],
   });
 
   const server = createServer(yoga);
