@@ -194,43 +194,34 @@ export async function createLesson(
   lessonType: string,
   classNo: string,
 ) {
-  // TODO: Fix this
-  while (true) {
-    try {
-      await prisma.module.upsert({
-        where: {
+  try {
+    await prisma.module.create({
+      data: {
+        userID,
+        semester,
+        moduleCode,
+        colorIndex: 1,
+      },
+    });
+  } catch (e) {
+    // Do nothing if already exists
+  }
+
+  await prisma.lesson.create({
+    data: {
+      module: {
+        connect: {
           userID_semester_moduleCode: {
             userID,
             semester,
             moduleCode,
           },
         },
-        update: {
-          lessons: {
-            create: {
-              lessonType,
-              classNo,
-            },
-          },
-        },
-        create: {
-          userID,
-          semester,
-          moduleCode,
-          colorIndex: 1,
-          lessons: {
-            create: {
-              lessonType,
-              classNo,
-            },
-          },
-        },
-      });
-    } catch {
-      continue;
-    }
-    break;
-  }
+      },
+      lessonType,
+      classNo,
+    },
+  });
 }
 
 export async function getRooms(prisma: PrismaClient, userID: number) {
