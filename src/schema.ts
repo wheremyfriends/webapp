@@ -53,7 +53,7 @@ export const schema = createSchema({
 
     type Query {
       getUser: AuthUser
-      getRooms: [String]
+      getRooms(userID: Int): [String]
       getConfig: [String]
     }
 
@@ -140,12 +140,17 @@ export const schema = createSchema({
       getUser: async (_: unknown, args: {}, context: GraphQLContext) => {
         return context.currentUser;
       },
-      getRooms: async (_: unknown, args: {}, context: GraphQLContext) => {
-        if (!context.currentUser) return [];
+      getRooms: async (
+        _: unknown,
+        args: { userID?: number },
+        context: GraphQLContext,
+      ) => {
+        const userID = args.userID ? args.userID : context.currentUser?.userID;
+        if (!userID) return [];
 
-        return (
-          await db.getRooms(context.prisma, context.currentUser.userID)
-        ).map((room) => room.uri);
+        return (await db.getRooms(context.prisma, userID)).map(
+          (room) => room.uri,
+        );
       },
       getConfig: async (_: unknown, args: {}, context: GraphQLContext) => {
         if (!context.currentUser) return [];
