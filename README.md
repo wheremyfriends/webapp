@@ -1,5 +1,12 @@
 # Server
 
+## Prerequisite
+
+- Functional PostgreSQL Server
+    - If using docker,
+        `docker compose up -d` to start a PostgreSQL instance
+- Change the configuration located in `.env.dev` (if necessary)
+
 ## Getting Started
 
 Ensure that dependencies are installed
