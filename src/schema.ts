@@ -19,6 +19,7 @@ interface LessonEvent {
   moduleCode: string;
   lessonType: string;
   classNo: string;
+  colorIndex: number;
 }
 
 interface UserChangeEvent {
@@ -36,6 +37,7 @@ enum Action {
   UPDATE_USER = "UPDATE_USER",
   DELETE_USER = "DELETE_USER",
   RESET_TIMETABLE = "RESET_TIMETABLE",
+  SET_COLOR = "SET_COLOR",
 }
 
 const pubSub = createPubSub<{
@@ -65,6 +67,7 @@ export const schema = createSchema({
       UPDATE_USER
       DELETE_USER
       RESET_TIMETABLE
+      SET_COLOR
     }
 
     type LessonChangeEvent {
@@ -74,6 +77,7 @@ export const schema = createSchema({
       moduleCode: String!
       lessonType: String!
       classNo: String!
+      colorIndex: Int!
     }
 
     type UserChangeEvent {
@@ -127,6 +131,14 @@ export const schema = createSchema({
       registerUser(username: String!, password: String!): Boolean
       loginUser(username: String!, password: String!): AuthUser
       logoutUser: Boolean
+
+      setColor(
+        roomID: String
+        userID: Int!
+        semester: Int!
+        moduleCode: String!
+        colorIndex: Int!
+      ): Boolean
     }
 
     type Subscription {
@@ -219,6 +231,7 @@ export const schema = createSchema({
             moduleCode: l.module.moduleCode,
             lessonType: l.lessonType,
             classNo: l.classNo,
+            colorIndex: l.module.colorIndex,
           }),
         );
 
@@ -318,6 +331,8 @@ export const schema = createSchema({
           context.currentUser,
         );
 
+        let randomColor = Math.floor(Math.random() * 8);
+
         await db
           .createLesson(
             context.prisma,
@@ -326,6 +341,7 @@ export const schema = createSchema({
             args.moduleCode,
             args.lessonType,
             args.classNo,
+            randomColor,
           )
           .catch(db.throwErr);
 
@@ -336,6 +352,7 @@ export const schema = createSchema({
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
           classNo: args.classNo,
+          colorIndex: randomColor,
         };
 
         const rooms = await db.getRooms(context.prisma, args.userID);
@@ -384,6 +401,7 @@ export const schema = createSchema({
           moduleCode: args.moduleCode,
           lessonType: args.lessonType,
           classNo: args.classNo,
+          colorIndex: 0,
         };
 
         const rooms = await db.getRooms(context.prisma, args.userID);
@@ -426,6 +444,7 @@ export const schema = createSchema({
           moduleCode: args.moduleCode,
           lessonType: "",
           classNo: "",
+          colorIndex: 0,
         };
         const rooms = await db.getRooms(context.prisma, args.userID);
         rooms.forEach((room) => {
@@ -463,6 +482,7 @@ export const schema = createSchema({
           moduleCode: "",
           lessonType: "",
           classNo: "",
+          colorIndex: 0,
         };
         const rooms = await db.getRooms(context.prisma, args.userID);
         rooms.forEach((room) => {
@@ -559,6 +579,52 @@ export const schema = createSchema({
         context.request.cookieStore?.delete("authorization");
         return true;
       },
+
+      setColor: async (
+        _: unknown,
+        args: {
+          roomID: string;
+          userID: number;
+          semester: number;
+          moduleCode: string;
+          colorIndex: number;
+        },
+        context: GraphQLContext,
+      ) => {
+        await checkAuthOrAnon(
+          context.prisma,
+          args.roomID,
+          args.userID,
+          context.currentUser,
+        );
+
+        await db
+          .setColour(
+            context.prisma,
+            args.userID,
+            args.semester,
+            args.moduleCode,
+            args.colorIndex,
+          )
+          .catch(db.throwErr);
+
+        const l = {
+          action: Action.SET_COLOR,
+          userID: args.userID,
+          semester: args.semester,
+          moduleCode: args.moduleCode,
+          colorIndex: args.colorIndex,
+          lessonType: "",
+          classNo: "",
+        };
+        const rooms = await db.getRooms(context.prisma, args.userID);
+        rooms.forEach((room) => {
+          pubSub.publish("room:lesson", room.uri, l);
+          log(l, "setColour");
+        });
+
+        return true;
+      },
     },
 
     Subscription: {
@@ -586,7 +652,9 @@ export const schema = createSchema({
                   moduleCode: l.module.moduleCode,
                   lessonType: l.lessonType,
                   classNo: l.classNo,
+                  colorIndex: l.module.colorIndex,
                 });
+                log(l, "lessonChangeSubscription");
               });
               await stop;
             }),
