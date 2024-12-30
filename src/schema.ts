@@ -29,6 +29,12 @@ interface UserChangeEvent {
   isAuth: boolean;
 }
 
+interface User {
+  userID: number;
+  name: string;
+  isAuth: boolean;
+}
+
 enum Action {
   CREATE_LESSON = "CREATE_LESSON",
   DELETE_LESSON = "DELETE_LESSON",
@@ -122,7 +128,7 @@ export const schema = createSchema({
       resetTimetable(roomID: String, userID: Int!, semester: Int!): Boolean
 
       joinRoom(roomID: String!): Boolean
-      createUser(roomID: String!): Boolean
+      createUser(roomID: String!): User
       updateUser(roomID: String!, userID: Int!, newname: String!): Boolean
       deleteUser(roomID: String!, userID: Int!): Boolean
 
@@ -191,7 +197,7 @@ export const schema = createSchema({
         pubSub.publish("room:user", args.roomID, u);
         log(u, "createUser");
 
-        return true;
+        return user;
       },
 
       joinRoom: async (
