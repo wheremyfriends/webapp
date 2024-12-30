@@ -41,7 +41,7 @@ describe("CRUD of Anonymous User", () => {
 
     const query = `
       mutation createUser($roomID: String!){
-        createUser(roomID: $roomID)
+        createUser(roomID: $roomID) { userID }
       }
     `;
     const resp = await sendGraphQL(GRAPHQL_URL, query, { roomID });
@@ -76,7 +76,7 @@ describe("CRUD of Anonymous User", () => {
 
     const query = `
       mutation createUser($roomID: String!){
-        createUser(roomID: $roomID)
+        createUser(roomID: $roomID) { userID }
       }
     `;
     const resp = await sendGraphQL(GRAPHQL_URL, query, { roomID });
