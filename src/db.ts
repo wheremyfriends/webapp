@@ -193,6 +193,7 @@ export async function createLesson(
   moduleCode: string,
   lessonType: string,
   classNo: string,
+  colorIndex: number,
 ) {
   try {
     await prisma.module.create({
@@ -200,7 +201,7 @@ export async function createLesson(
         userID,
         semester,
         moduleCode,
-        colorIndex: 1,
+        colorIndex,
       },
     });
   } catch (e) {
@@ -414,6 +415,27 @@ export async function setConfig(
     create: {
       userID,
       data: json,
+    },
+  });
+}
+
+export async function setColour(
+  prisma: PrismaClient,
+  userID: number,
+  semester: number,
+  moduleCode: string,
+  colorIndex: number,
+) {
+  return await prisma.module.update({
+    where: {
+      userID_semester_moduleCode: {
+        userID,
+        semester,
+        moduleCode,
+      },
+    },
+    data: {
+      colorIndex,
     },
   });
 }
