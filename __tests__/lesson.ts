@@ -98,7 +98,7 @@ describe("CRUD of lessons", () => {
     }`;
 
     const userID = (await createUser(prisma, "room1", "user1")).userID;
-    await createLesson(prisma, userID, 1, "CS2040S", "Lecture", "L01");
+    await createLesson(prisma, userID, 1, "CS2040S", "Lecture", "L01", 1);
 
     await sendGraphQL(GRAPHQL_URL, query, {
       roomID: "room1",
@@ -163,7 +163,7 @@ describe("CRUD of lessons", () => {
     }`;
 
     const userID = (await createUser(prisma, "room1", "user1")).userID;
-    await createLesson(prisma, userID, 1, "CS2040S", "Lecture", "L01");
+    await createLesson(prisma, userID, 1, "CS2040S", "Lecture", "L01", 1);
 
     await sendGraphQL(GRAPHQL_URL, query, {
       roomID: "room1",
